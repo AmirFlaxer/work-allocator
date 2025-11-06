@@ -126,7 +126,6 @@ export function WeeklyPreferences({ employees, stations, weekStart, onUpdate }: 
                           <SelectValue placeholder="בחר עמדה" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">ללא בקשה</SelectItem>
                           {selectedEmp.availableStations.map(stationId => {
                             const station = stations.find(s => s.id === stationId);
                             return station ? (
