@@ -12,7 +12,8 @@ interface ScheduleTableProps {
 const HEBREW_DAYS = ["ראשון", "שני", "שלישי", "רביעי", "חמישי"];
 
 export function ScheduleTable({ schedule, stations, weekStart }: ScheduleTableProps) {
-  const weekDays = getWeekDays(weekStart);
+  const weekDays = getWeekDays(weekStart).reverse();
+  const hebrewDaysReversed = [...HEBREW_DAYS].reverse();
 
   return (
     <Card className="overflow-hidden">
@@ -23,7 +24,7 @@ export function ScheduleTable({ schedule, stations, weekStart }: ScheduleTablePr
               <TableHead className="font-bold text-right">עמדה</TableHead>
               {weekDays.map((date, idx) => (
                 <TableHead key={date} className="text-center font-bold min-w-[150px]">
-                  <div>{HEBREW_DAYS[idx]}</div>
+                  <div>{hebrewDaysReversed[idx]}</div>
                   <div className="text-xs font-normal text-muted-foreground">
                     {new Date(date).toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit' })}
                   </div>
