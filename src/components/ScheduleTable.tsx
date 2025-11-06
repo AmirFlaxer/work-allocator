@@ -21,7 +21,6 @@ export function ScheduleTable({ schedule, stations, weekStart }: ScheduleTablePr
         <Table>
           <TableHeader>
             <TableRow className="bg-primary/5">
-              <TableHead className="font-bold text-right">עמדה</TableHead>
               {weekDays.map((date, idx) => (
                 <TableHead key={date} className="text-center font-bold min-w-[150px]">
                   <div>{hebrewDaysReversed[idx]}</div>
@@ -30,17 +29,12 @@ export function ScheduleTable({ schedule, stations, weekStart }: ScheduleTablePr
                   </div>
                 </TableHead>
               ))}
+              <TableHead className="font-bold text-right">עמדה</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {stations.map((station) => (
               <TableRow key={station.id}>
-                <TableCell className="font-medium">
-                  <div className="flex items-center gap-2">
-                    <Badge variant="outline">{station.id}</Badge>
-                    <span>{station.name}</span>
-                  </div>
-                </TableCell>
                 {weekDays.map((date) => {
                   const employeeName = schedule[date]?.[station.id] || "";
                   return (
@@ -55,6 +49,12 @@ export function ScheduleTable({ schedule, stations, weekStart }: ScheduleTablePr
                     </TableCell>
                   );
                 })}
+                <TableCell className="font-medium">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline">{station.id}</Badge>
+                    <span>{station.name}</span>
+                  </div>
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
