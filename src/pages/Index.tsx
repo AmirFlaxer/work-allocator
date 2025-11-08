@@ -21,10 +21,16 @@ const Index = () => {
     const saved = localStorage.getItem("stations");
     return saved ? JSON.parse(saved) : [];
   });
-  const [schedule, setSchedule] = useState<WeeklySchedule | null>(null);
+  const [schedule, setSchedule] = useState<WeeklySchedule | null>(() => {
+    const saved = localStorage.getItem("schedule");
+    return saved ? JSON.parse(saved) : null;
+  });
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
   const [showEmployeeForm, setShowEmployeeForm] = useState(false);
-  const [weekStart, setWeekStart] = useState(() => getNextSunday(new Date()));
+  const [weekStart, setWeekStart] = useState(() => {
+    const saved = localStorage.getItem("weekStart");
+    return saved ? new Date(saved) : getNextSunday(new Date());
+  });
 
   function getNextSunday(date: Date) {
     const result = new Date(date);
@@ -41,6 +47,18 @@ const Index = () => {
   useEffect(() => {
     localStorage.setItem("stations", JSON.stringify(stations));
   }, [stations]);
+
+  // Auto-save schedule to localStorage
+  useEffect(() => {
+    if (schedule) {
+      localStorage.setItem("schedule", JSON.stringify(schedule));
+    }
+  }, [schedule]);
+
+  // Auto-save weekStart to localStorage
+  useEffect(() => {
+    localStorage.setItem("weekStart", weekStart.toISOString());
+  }, [weekStart]);
 
   const handleAddStation = (name: string) => {
     const newId = stations.length > 0 ? Math.max(...stations.map(s => s.id)) + 1 : 1;
