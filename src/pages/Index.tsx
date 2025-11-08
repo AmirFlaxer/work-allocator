@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Employee, Station, WeeklySchedule } from "@/types/employee";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -13,8 +13,14 @@ import { useToast } from "@/hooks/use-toast";
 
 const Index = () => {
   const { toast } = useToast();
-  const [employees, setEmployees] = useState<Employee[]>([]);
-  const [stations, setStations] = useState<Station[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>(() => {
+    const saved = localStorage.getItem("employees");
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [stations, setStations] = useState<Station[]>(() => {
+    const saved = localStorage.getItem("stations");
+    return saved ? JSON.parse(saved) : [];
+  });
   const [schedule, setSchedule] = useState<WeeklySchedule | null>(null);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
   const [showEmployeeForm, setShowEmployeeForm] = useState(false);
@@ -25,6 +31,16 @@ const Index = () => {
     result.setDate(result.getDate() + ((7 - result.getDay()) % 7));
     return result;
   }
+
+  // Auto-save employees to localStorage
+  useEffect(() => {
+    localStorage.setItem("employees", JSON.stringify(employees));
+  }, [employees]);
+
+  // Auto-save stations to localStorage
+  useEffect(() => {
+    localStorage.setItem("stations", JSON.stringify(stations));
+  }, [stations]);
 
   const handleAddStation = (name: string) => {
     const newId = stations.length > 0 ? Math.max(...stations.map(s => s.id)) + 1 : 1;
