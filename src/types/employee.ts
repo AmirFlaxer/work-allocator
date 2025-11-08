@@ -18,3 +18,11 @@ export interface WeeklySchedule {
     [stationId: number]: string; // employee name
   };
 }
+
+export interface SavedSchedule {
+  id: string;
+  name: string;
+  schedule: WeeklySchedule;
+  weekStart: string;
+  savedAt: string;
+}
