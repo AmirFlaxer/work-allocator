@@ -11,8 +11,9 @@ import { EmployeeForm } from "@/components/EmployeeForm";
 import { StationManager } from "@/components/StationManager";
 import { WeeklyPreferences } from "@/components/WeeklyPreferences";
 import { ScheduleTable } from "@/components/ScheduleTable";
+import { ScheduleChanges } from "@/components/ScheduleChanges";
 import { generateWeeklySchedule } from "@/lib/scheduler";
-import { Plus, Calendar, Users, MapPin, Save, FolderOpen, Trash2 } from "lucide-react";
+import { Plus, Calendar, Users, MapPin, Save, FolderOpen, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const Index = () => {
@@ -41,6 +42,7 @@ const Index = () => {
   });
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [scheduleName, setScheduleName] = useState("");
+  const [previousSchedule, setPreviousSchedule] = useState<WeeklySchedule | null>(null);
 
   function getNextSunday(date: Date) {
     const result = new Date(date);
@@ -156,9 +158,30 @@ const Index = () => {
       return;
     }
 
+    // Save current schedule as previous before generating new one
+    if (schedule) {
+      setPreviousSchedule(schedule);
+    }
+
     const newSchedule = generateWeeklySchedule(employees, stations, weekStart);
     setSchedule(newSchedule);
     toast({ title: "השיבוץ נוצר בהצלחה!" });
+  };
+
+  const handlePreviousWeek = () => {
+    const newDate = new Date(weekStart);
+    newDate.setDate(newDate.getDate() - 7);
+    setWeekStart(newDate);
+  };
+
+  const handleNextWeek = () => {
+    const newDate = new Date(weekStart);
+    newDate.setDate(newDate.getDate() + 7);
+    setWeekStart(newDate);
+  };
+
+  const handleToday = () => {
+    setWeekStart(getNextSunday(new Date()));
   };
 
   return (
@@ -246,43 +269,73 @@ const Index = () => {
           </TabsContent>
 
           <TabsContent value="schedule" className="space-y-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-semibold">שיבוץ שבועי</h2>
-              <div className="flex gap-2">
-                <Button onClick={handleGenerateSchedule} size="lg">
-                  <Calendar className="h-4 w-4 ml-2" />
-                  צור שיבוץ
-                </Button>
-                {schedule && (
-                  <Dialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>
-                    <DialogTrigger asChild>
-                      <Button size="lg" variant="outline">
-                        <Save className="h-4 w-4 ml-2" />
-                        שמור שיבוץ
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>שמור שיבוץ לארכיון</DialogTitle>
-                      </DialogHeader>
-                      <div className="space-y-4 py-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="scheduleName">שם השיבוץ</Label>
-                          <Input
-                            id="scheduleName"
-                            placeholder="לדוגמה: שיבוץ דצמבר 2024"
-                            value={scheduleName}
-                            onChange={(e) => setScheduleName(e.target.value)}
-                          />
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-semibold">שיבוץ שבועי</h2>
+                <div className="flex gap-2">
+                  <Button onClick={handleGenerateSchedule} size="lg">
+                    <Calendar className="h-4 w-4 ml-2" />
+                    צור שיבוץ
+                  </Button>
+                  {schedule && (
+                    <Dialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>
+                      <DialogTrigger asChild>
+                        <Button size="lg" variant="outline">
+                          <Save className="h-4 w-4 ml-2" />
+                          שמור שיבוץ
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>שמור שיבוץ לארכיון</DialogTitle>
+                        </DialogHeader>
+                        <div className="space-y-4 py-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="scheduleName">שם השיבוץ</Label>
+                            <Input
+                              id="scheduleName"
+                              placeholder="לדוגמה: שיבוץ דצמבר 2024"
+                              value={scheduleName}
+                              onChange={(e) => setScheduleName(e.target.value)}
+                            />
+                          </div>
                         </div>
-                      </div>
-                      <DialogFooter>
-                        <Button onClick={handleSaveSchedule}>שמור</Button>
-                      </DialogFooter>
-                    </DialogContent>
-                  </Dialog>
-                )}
+                        <DialogFooter>
+                          <Button onClick={handleSaveSchedule}>שמור</Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
+                  )}
+                </div>
               </div>
+
+              <Card className="bg-accent/20">
+                <CardContent className="py-4">
+                  <div className="flex items-center justify-between">
+                    <Button variant="outline" size="sm" onClick={handlePreviousWeek}>
+                      <ChevronRight className="h-4 w-4" />
+                      שבוע קודם
+                    </Button>
+                    <div className="flex flex-col items-center gap-1">
+                      <p className="text-sm text-muted-foreground">שבוע מתחיל ב:</p>
+                      <p className="font-semibold text-lg">
+                        {weekStart.toLocaleDateString('he-IL', { 
+                          day: '2-digit', 
+                          month: 'long', 
+                          year: 'numeric' 
+                        })}
+                      </p>
+                      <Button variant="ghost" size="sm" onClick={handleToday} className="text-xs">
+                        חזור לשבוע הנוכחי
+                      </Button>
+                    </div>
+                    <Button variant="outline" size="sm" onClick={handleNextWeek}>
+                      שבוע הבא
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
 
             {schedule ? (
@@ -291,6 +344,12 @@ const Index = () => {
                   schedule={schedule}
                   stations={stations}
                   weekStart={weekStart}
+                />
+                <ScheduleChanges
+                  currentSchedule={schedule}
+                  previousSchedule={previousSchedule}
+                  stations={stations}
+                  currentWeekStart={weekStart}
                 />
               </>
             ) : (
