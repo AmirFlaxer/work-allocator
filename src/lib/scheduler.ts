@@ -62,7 +62,24 @@ export function generateWeeklySchedule(
       }
     });
 
-  // Third pass: Fill remaining slots with non-starred employees
+  // Third pass: Try to honor non-starred employee requests (best effort)
+  employees
+    .filter(emp => !emp.hasStar)
+    .forEach(employee => {
+      employee.specificRequests?.forEach(request => {
+        if (weekDays.includes(request.date)) {
+          if (employee.availableStations.includes(request.stationId)) {
+            // Only assign if slot is empty and employee is not already assigned that day
+            if (!schedule[request.date][request.stationId] && !employeeAssignments[employee.id][request.date]) {
+              schedule[request.date][request.stationId] = employee.name;
+              employeeAssignments[employee.id][request.date] = true;
+            }
+          }
+        }
+      });
+    });
+
+  // Fourth pass: Fill remaining slots with non-starred employees
   employees
     .filter(emp => !emp.hasStar)
     .forEach(employee => {

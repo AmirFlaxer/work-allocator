@@ -13,8 +13,11 @@ import { WeeklyPreferences } from "@/components/WeeklyPreferences";
 import { ScheduleTable } from "@/components/ScheduleTable";
 import { ScheduleChanges } from "@/components/ScheduleChanges";
 import { generateWeeklySchedule } from "@/lib/scheduler";
-import { Plus, Calendar, Users, MapPin, Save, FolderOpen, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, Calendar, Users, MapPin, Save, FolderOpen, Trash2, ChevronLeft, ChevronRight, Download, Image, FileSpreadsheet, Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { Switch } from "@/components/ui/switch";
+import * as XLSX from 'xlsx';
+import { toPng } from 'html-to-image';
 
 const Index = () => {
   const { toast } = useToast();
@@ -43,6 +46,7 @@ const Index = () => {
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [scheduleName, setScheduleName] = useState("");
   const [previousSchedule, setPreviousSchedule] = useState<WeeklySchedule | null>(null);
+  const [showChanges, setShowChanges] = useState(true);
 
   function getNextSunday(date: Date) {
     const result = new Date(date);
@@ -183,6 +187,73 @@ const Index = () => {
   const handleToday = () => {
     setWeekStart(getNextSunday(new Date()));
   };
+
+  const handleExportToExcel = () => {
+    if (!schedule) return;
+    
+    const weekDays = getWeekDaysForExport(weekStart);
+    const HEBREW_DAYS = ["ראשון", "שני", "שלישי", "רביעי", "חמישי"];
+    
+    // Create header row
+    const headers = ["עמדה", ...HEBREW_DAYS.map((day, idx) => 
+      `${day} (${new Date(weekDays[idx]).toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit' })})`
+    )];
+    
+    // Create data rows
+    const data = stations.map(station => {
+      const row = [station.name];
+      weekDays.forEach(date => {
+        row.push(schedule[date]?.[station.id] || "לא משובץ");
+      });
+      return row;
+    });
+    
+    // Create worksheet
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "שיבוץ שבועי");
+    
+    // Save file
+    XLSX.writeFile(wb, `שיבוץ_${weekStart.toLocaleDateString('he-IL').replace(/\//g, '-')}.xlsx`);
+    
+    toast({ title: "הקובץ הורד בהצלחה" });
+  };
+
+  const handleExportToImage = async () => {
+    const scheduleElement = document.getElementById('schedule-table');
+    if (!scheduleElement) return;
+    
+    try {
+      const dataUrl = await toPng(scheduleElement, { 
+        quality: 1,
+        pixelRatio: 2,
+        backgroundColor: '#ffffff'
+      });
+      
+      const link = document.createElement('a');
+      link.download = `שיבוץ_${weekStart.toLocaleDateString('he-IL').replace(/\//g, '-')}.png`;
+      link.href = dataUrl;
+      link.click();
+      
+      toast({ title: "התמונה הורדה בהצלחה" });
+    } catch (err) {
+      toast({ 
+        title: "שגיאה בייצוא תמונה", 
+        description: "נסה שוב",
+        variant: "destructive" 
+      });
+    }
+  };
+
+  function getWeekDaysForExport(weekStart: Date): string[] {
+    const days: string[] = [];
+    for (let i = 0; i < 5; i++) {
+      const date = new Date(weekStart);
+      date.setDate(date.getDate() + i);
+      days.push(date.toISOString().split('T')[0]);
+    }
+    return days;
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -340,17 +411,45 @@ const Index = () => {
 
             {schedule ? (
               <>
-                <ScheduleTable
-                  schedule={schedule}
-                  stations={stations}
-                  weekStart={weekStart}
-                />
-                <ScheduleChanges
-                  currentSchedule={schedule}
-                  previousSchedule={previousSchedule}
-                  stations={stations}
-                  currentWeekStart={weekStart}
-                />
+                <div className="flex gap-2 justify-end">
+                  <Button variant="outline" onClick={handleExportToImage}>
+                    <Image className="h-4 w-4 ml-2" />
+                    ייצא כתמונה
+                  </Button>
+                  <Button variant="outline" onClick={handleExportToExcel}>
+                    <FileSpreadsheet className="h-4 w-4 ml-2" />
+                    ייצא לאקסל
+                  </Button>
+                </div>
+                
+                <div id="schedule-table">
+                  <ScheduleTable
+                    schedule={schedule}
+                    stations={stations}
+                    weekStart={weekStart}
+                  />
+                </div>
+
+                <div className="flex items-center gap-3 p-4 border rounded-lg bg-accent/20">
+                  <Switch
+                    id="show-changes"
+                    checked={showChanges}
+                    onCheckedChange={setShowChanges}
+                  />
+                  <Label htmlFor="show-changes" className="cursor-pointer flex items-center gap-2">
+                    {showChanges ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                    הצג השוואה לשבוע הקודם
+                  </Label>
+                </div>
+                
+                {showChanges && (
+                  <ScheduleChanges
+                    currentSchedule={schedule}
+                    previousSchedule={previousSchedule}
+                    stations={stations}
+                    currentWeekStart={weekStart}
+                  />
+                )}
               </>
             ) : (
               <div className="text-center py-12 text-muted-foreground">

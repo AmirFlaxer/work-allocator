@@ -103,58 +103,59 @@ export function WeeklyPreferences({ employees, stations, weekStart, onUpdate }: 
             </div>
           </div>
 
-          {selectedEmp.hasStar && (
-            <div className="space-y-4">
-              <h3 className="font-semibold">בקשות שיבוץ ספציפיות (עובד עם כוכב)</h3>
-              <div className="space-y-3">
-                {weekDays.map((date, idx) => {
-                  const request = selectedEmp.specificRequests?.find(r => r.date === date);
-                  return (
-                    <div key={date} className="flex items-center gap-3">
-                      <Label className="min-w-[120px]">
-                        {HEBREW_DAYS[idx]} ({new Date(date).toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit' })})
-                      </Label>
-                      <Select
-                        value={request?.stationId.toString() || ""}
-                        onValueChange={(value) => {
-                          if (value) {
-                            handleSpecificRequest(date, parseInt(value));
-                          }
+          <div className="space-y-4">
+            <h3 className="font-semibold">
+              בקשות שיבוץ ספציפיות 
+              {selectedEmp.hasStar ? " (עובד עם כוכב - יתקיים תמיד)" : " (ינסה להתחשב אבל לא מובטח)"}
+            </h3>
+            <div className="space-y-3">
+              {weekDays.map((date, idx) => {
+                const request = selectedEmp.specificRequests?.find(r => r.date === date);
+                return (
+                  <div key={date} className="flex items-center gap-3">
+                    <Label className="min-w-[120px]">
+                      {HEBREW_DAYS[idx]} ({new Date(date).toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit' })})
+                    </Label>
+                    <Select
+                      value={request?.stationId.toString() || ""}
+                      onValueChange={(value) => {
+                        if (value) {
+                          handleSpecificRequest(date, parseInt(value));
+                        }
+                      }}
+                    >
+                      <SelectTrigger className="w-[200px]">
+                        <SelectValue placeholder="בחר עמדה" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {selectedEmp.availableStations.map(stationId => {
+                          const station = stations.find(s => s.id === stationId);
+                          return station ? (
+                            <SelectItem key={stationId} value={stationId.toString()}>
+                              {station.name}
+                            </SelectItem>
+                          ) : null;
+                        })}
+                      </SelectContent>
+                    </Select>
+                    {request && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          onUpdate(selectedEmployee, {
+                            specificRequests: selectedEmp.specificRequests?.filter(r => r.date !== date)
+                          });
                         }}
                       >
-                        <SelectTrigger className="w-[200px]">
-                          <SelectValue placeholder="בחר עמדה" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {selectedEmp.availableStations.map(stationId => {
-                            const station = stations.find(s => s.id === stationId);
-                            return station ? (
-                              <SelectItem key={stationId} value={stationId.toString()}>
-                                {station.name}
-                              </SelectItem>
-                            ) : null;
-                          })}
-                        </SelectContent>
-                      </Select>
-                      {request && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            onUpdate(selectedEmployee, {
-                              specificRequests: selectedEmp.specificRequests?.filter(r => r.date !== date)
-                            });
-                          }}
-                        >
-                          נקה
-                        </Button>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
+                        נקה
+                      </Button>
+                    )}
+                  </div>
+                );
+              })}
             </div>
-          )}
+          </div>
         </Card>
       )}
     </div>
