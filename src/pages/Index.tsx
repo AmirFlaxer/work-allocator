@@ -189,39 +189,63 @@ const Index = () => {
   };
 
   const handleExportToExcel = () => {
-    if (!schedule) return;
-    
-    const weekDays = getWeekDaysForExport(weekStart);
-    const HEBREW_DAYS = ["ראשון", "שני", "שלישי", "רביעי", "חמישי"];
-    
-    // Create header row
-    const headers = ["עמדה", ...HEBREW_DAYS.map((day, idx) => 
-      `${day} (${new Date(weekDays[idx]).toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit' })})`
-    )];
-    
-    // Create data rows
-    const data = stations.map(station => {
-      const row = [station.name];
-      weekDays.forEach(date => {
-        row.push(schedule[date]?.[station.id] || "לא משובץ");
+    if (!schedule) {
+      toast({ 
+        title: "שגיאה", 
+        description: "אין שיבוץ לייצא",
+        variant: "destructive" 
       });
-      return row;
-    });
+      return;
+    }
     
-    // Create worksheet
-    const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "שיבוץ שבועי");
-    
-    // Save file
-    XLSX.writeFile(wb, `שיבוץ_${weekStart.toLocaleDateString('he-IL').replace(/\//g, '-')}.xlsx`);
-    
-    toast({ title: "הקובץ הורד בהצלחה" });
+    try {
+      const weekDays = getWeekDaysForExport(weekStart);
+      const HEBREW_DAYS = ["ראשון", "שני", "שלישי", "רביעי", "חמישי"];
+      
+      // Create header row
+      const headers = ["עמדה", ...HEBREW_DAYS.map((day, idx) => 
+        `${day} (${new Date(weekDays[idx]).toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit' })})`
+      )];
+      
+      // Create data rows
+      const data = stations.map(station => {
+        const row = [station.name];
+        weekDays.forEach(date => {
+          row.push(schedule[date]?.[station.id] || "לא משובץ");
+        });
+        return row;
+      });
+      
+      // Create worksheet
+      const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "שיבוץ שבועי");
+      
+      // Save file
+      const fileName = `שיבוץ_${weekStart.toLocaleDateString('he-IL').replace(/\//g, '-')}.xlsx`;
+      XLSX.writeFile(wb, fileName);
+      
+      toast({ title: "קובץ האקסל הורד בהצלחה" });
+    } catch (err) {
+      console.error("Error exporting to Excel:", err);
+      toast({ 
+        title: "שגיאה בייצוא לאקסל", 
+        description: "נסה שוב",
+        variant: "destructive" 
+      });
+    }
   };
 
   const handleExportToImage = async () => {
     const scheduleElement = document.getElementById('schedule-table');
-    if (!scheduleElement) return;
+    if (!scheduleElement) {
+      toast({ 
+        title: "שגיאה", 
+        description: "לא נמצא טבלת שיבוץ",
+        variant: "destructive" 
+      });
+      return;
+    }
     
     try {
       const dataUrl = await toPng(scheduleElement, { 
@@ -235,8 +259,9 @@ const Index = () => {
       link.href = dataUrl;
       link.click();
       
-      toast({ title: "התמונה הורדה בהצלחה" });
+      toast({ title: "תמונת השיבוץ הורדה בהצלחה" });
     } catch (err) {
+      console.error("Error exporting to image:", err);
       toast({ 
         title: "שגיאה בייצוא תמונה", 
         description: "נסה שוב",
