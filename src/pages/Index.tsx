@@ -122,6 +122,11 @@ const Index = () => {
     toast({ title: "העמדה נוספה בהצלחה" });
   };
 
+  const handleEditStation = (id: number, name: string) => {
+    setStations(stations.map(s => s.id === id ? { ...s, name } : s));
+    toast({ title: "העמדה עודכנה בהצלחה" });
+  };
+
   const handleDeleteStation = (id: number) => {
     setStations(stations.filter(s => s.id !== id));
     toast({ title: "העמדה נמחקה" });
@@ -317,6 +322,7 @@ const Index = () => {
             <StationManager
               stations={stations}
               onAdd={handleAddStation}
+              onEdit={handleEditStation}
               onDelete={handleDeleteStation}
             />
           </TabsContent>
