@@ -31,7 +31,7 @@ export function generateWeeklySchedule(
     .forEach(employee => {
       employee.specificRequests?.forEach(request => {
         if (weekDays.includes(request.date)) {
-          if ((employee.availableStations?.length ?? 0) === 0 || employee.availableStations.includes(request.stationId)) {
+          if (!employee.unavailableDays?.includes(request.date) && (((employee.availableStations?.length ?? 0) === 0) || employee.availableStations.includes(request.stationId))) {
             schedule[request.date][request.stationId] = employee.name;
             employeeAssignments[employee.id][request.date] = true;
           }
@@ -68,7 +68,7 @@ export function generateWeeklySchedule(
     .forEach(employee => {
       employee.specificRequests?.forEach(request => {
         if (weekDays.includes(request.date)) {
-          if ((employee.availableStations?.length ?? 0) === 0 || employee.availableStations.includes(request.stationId)) {
+          if (!employee.unavailableDays?.includes(request.date) && (((employee.availableStations?.length ?? 0) === 0) || employee.availableStations.includes(request.stationId))) {
             // Only assign if slot is empty and employee is not already assigned that day
             if (!schedule[request.date][request.stationId] && !employeeAssignments[employee.id][request.date]) {
               schedule[request.date][request.stationId] = employee.name;
@@ -97,16 +97,17 @@ export function generateWeeklySchedule(
       }
     });
 
-  // Fifth pass: Fill remaining slots ignoring unavailability for non-starred employees
+  // Fifth pass: Fill remaining slots with non-starred employees (respect unavailability)
   weekDays.forEach(date => {
     stations.forEach(station => {
       if (!schedule[date][station.id]) {
-        // Try non-starred employees first (even if unavailable)
+        // Try non-starred employees who are available and not assigned that day
         const nonStarredEmployee = employees
           .filter(emp => !emp.hasStar)
           .find(emp => 
-            emp.availableStations.includes(station.id) && 
-            !employeeAssignments[emp.id][date]
+            ((((emp.availableStations?.length ?? 0) === 0) || emp.availableStations.includes(station.id))) &&
+            !employeeAssignments[emp.id][date] &&
+            !(emp.unavailableDays?.includes(date))
           );
         
         if (nonStarredEmployee) {
@@ -117,18 +118,20 @@ export function generateWeeklySchedule(
     });
   });
 
-  // Sixth pass: If still empty, allow multiple assignments per day ONLY for employees who allow it
+  // Sixth pass: If still empty, allow multiple assignments per day ONLY for employees who allow it and are available
   weekDays.forEach(date => {
     stations.forEach(station => {
       if (!schedule[date][station.id]) {
-        // Find ANY employee who can work this station AND allows multiple assignments
+        // Find ANY employee who can work this station AND allows multiple assignments AND is available that day
         const multipleEmployee = employees.find(emp => 
-          emp.availableStations.includes(station.id) &&
-          emp.canWorkMultipleStations === true
+          ((((emp.availableStations?.length ?? 0) === 0) || emp.availableStations.includes(station.id))) &&
+          emp.canWorkMultipleStations === true &&
+          !(emp.unavailableDays?.includes(date))
         );
         
         if (multipleEmployee) {
           schedule[date][station.id] = multipleEmployee.name;
+          employeeAssignments[multipleEmployee.id][date] = true;
         }
       }
     });
