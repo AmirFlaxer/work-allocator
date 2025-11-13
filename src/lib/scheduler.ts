@@ -31,7 +31,7 @@ export function generateWeeklySchedule(
     .forEach(employee => {
       employee.specificRequests?.forEach(request => {
         if (weekDays.includes(request.date)) {
-          if (employee.availableStations.includes(request.stationId)) {
+          if ((employee.availableStations?.length ?? 0) === 0 || employee.availableStations.includes(request.stationId)) {
             schedule[request.date][request.stationId] = employee.name;
             employeeAssignments[employee.id][request.date] = true;
           }
@@ -51,7 +51,7 @@ export function generateWeeklySchedule(
         if (employee.unavailableDays?.includes(date)) continue;
         if (employeeAssignments[employee.id][date]) continue;
 
-        for (const stationId of employee.availableStations) {
+        for (const stationId of ((employee.availableStations?.length ?? 0) === 0 ? stations.map(s => s.id) : employee.availableStations)) {
           if (!schedule[date][stationId]) {
             schedule[date][stationId] = employee.name;
             employeeAssignments[employee.id][date] = true;
@@ -68,7 +68,7 @@ export function generateWeeklySchedule(
     .forEach(employee => {
       employee.specificRequests?.forEach(request => {
         if (weekDays.includes(request.date)) {
-          if (employee.availableStations.includes(request.stationId)) {
+          if ((employee.availableStations?.length ?? 0) === 0 || employee.availableStations.includes(request.stationId)) {
             // Only assign if slot is empty and employee is not already assigned that day
             if (!schedule[request.date][request.stationId] && !employeeAssignments[employee.id][request.date]) {
               schedule[request.date][request.stationId] = employee.name;
@@ -87,7 +87,7 @@ export function generateWeeklySchedule(
         if (employeeAssignments[employee.id][date]) continue;
         if (employee.unavailableDays?.includes(date)) continue;
         
-        for (const stationId of employee.availableStations) {
+        for (const stationId of ((employee.availableStations?.length ?? 0) === 0 ? stations.map(s => s.id) : employee.availableStations)) {
           if (!schedule[date][stationId]) {
             schedule[date][stationId] = employee.name;
             employeeAssignments[employee.id][date] = true;
