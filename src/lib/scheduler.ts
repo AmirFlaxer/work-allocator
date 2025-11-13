@@ -97,19 +97,37 @@ export function generateWeeklySchedule(
       }
     });
 
-  // Fifth pass: Fill any remaining empty slots with any available employee (ignore unavailability if needed)
+  // Fifth pass: Fill remaining slots ignoring unavailability for non-starred employees
   weekDays.forEach(date => {
     stations.forEach(station => {
       if (!schedule[date][station.id]) {
-        // Find any employee who can work this station and isn't already assigned that day
-        const availableEmployee = employees.find(emp => 
-          emp.availableStations.includes(station.id) && 
-          !employeeAssignments[emp.id][date]
+        // Try non-starred employees first (even if unavailable)
+        const nonStarredEmployee = employees
+          .filter(emp => !emp.hasStar)
+          .find(emp => 
+            emp.availableStations.includes(station.id) && 
+            !employeeAssignments[emp.id][date]
+          );
+        
+        if (nonStarredEmployee) {
+          schedule[date][station.id] = nonStarredEmployee.name;
+          employeeAssignments[nonStarredEmployee.id][date] = true;
+        }
+      }
+    });
+  });
+
+  // Sixth pass: If still empty, allow multiple assignments per day for any employee
+  weekDays.forEach(date => {
+    stations.forEach(station => {
+      if (!schedule[date][station.id]) {
+        // Find ANY employee who can work this station (allow multiple assignments)
+        const anyEmployee = employees.find(emp => 
+          emp.availableStations.includes(station.id)
         );
         
-        if (availableEmployee) {
-          schedule[date][station.id] = availableEmployee.name;
-          employeeAssignments[availableEmployee.id][date] = true;
+        if (anyEmployee) {
+          schedule[date][station.id] = anyEmployee.name;
         }
       }
     });
