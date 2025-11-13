@@ -17,6 +17,9 @@ export function EmployeeForm({ employee, stations, onSave, onCancel }: EmployeeF
   const [name, setName] = useState(employee?.name || "");
   const [hasStar, setHasStar] = useState(employee?.hasStar || false);
   const [minWeeklyShifts, setMinWeeklyShifts] = useState(employee?.minWeeklyShifts || 1);
+  const [canWorkMultipleStations, setCanWorkMultipleStations] = useState(
+    employee?.canWorkMultipleStations ?? false
+  );
   const [availableStations, setAvailableStations] = useState<number[]>(
     employee?.availableStations || []
   );
@@ -39,6 +42,7 @@ export function EmployeeForm({ employee, stations, onSave, onCancel }: EmployeeF
       hasStar,
       minWeeklyShifts,
       availableStations: availableStations.sort((a, b) => a - b),
+      canWorkMultipleStations,
     });
   };
 
@@ -64,6 +68,17 @@ export function EmployeeForm({ employee, stations, onSave, onCancel }: EmployeeF
           />
           <Label htmlFor="hasStar" className="cursor-pointer">
             עובד עם כוכב (עדיפות גבוהה)
+          </Label>
+        </div>
+
+        <div className="flex items-center space-x-2 space-x-reverse">
+          <Checkbox
+            id="canWorkMultiple"
+            checked={canWorkMultipleStations}
+            onCheckedChange={(checked) => setCanWorkMultipleStations(checked as boolean)}
+          />
+          <Label htmlFor="canWorkMultiple" className="cursor-pointer">
+            אפשר שיבוץ למספר עמדות ביום
           </Label>
         </div>
 

@@ -117,17 +117,18 @@ export function generateWeeklySchedule(
     });
   });
 
-  // Sixth pass: If still empty, allow multiple assignments per day for any employee
+  // Sixth pass: If still empty, allow multiple assignments per day ONLY for employees who allow it
   weekDays.forEach(date => {
     stations.forEach(station => {
       if (!schedule[date][station.id]) {
-        // Find ANY employee who can work this station (allow multiple assignments)
-        const anyEmployee = employees.find(emp => 
-          emp.availableStations.includes(station.id)
+        // Find ANY employee who can work this station AND allows multiple assignments
+        const multipleEmployee = employees.find(emp => 
+          emp.availableStations.includes(station.id) &&
+          emp.canWorkMultipleStations === true
         );
         
-        if (anyEmployee) {
-          schedule[date][station.id] = anyEmployee.name;
+        if (multipleEmployee) {
+          schedule[date][station.id] = multipleEmployee.name;
         }
       }
     });

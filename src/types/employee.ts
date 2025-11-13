@@ -6,6 +6,7 @@ export interface Employee {
   minWeeklyShifts: number;
   unavailableDays?: string[]; // ISO date strings
   specificRequests?: { date: string; stationId: number }[];
+  canWorkMultipleStations?: boolean; // Can be assigned to multiple stations per day
 }
 
 export interface Station {
