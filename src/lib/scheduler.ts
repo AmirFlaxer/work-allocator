@@ -1,18 +1,26 @@
 import { Employee, Station, WeeklySchedule } from "@/types/employee";
 
+function cellKey(date: string, stationId: number) {
+  return `${date}__${stationId}`;
+}
+
 export function generateWeeklySchedule(
   employees: Employee[],
   stations: Station[],
-  weekStart: Date
+  weekStart: Date,
+  baseSchedule?: WeeklySchedule,
+  lockedCells?: Set<string>
 ): WeeklySchedule {
   const schedule: WeeklySchedule = {};
   const weekDays = getWeekDays(weekStart);
 
-  // Initialize schedule structure
+  // Initialize — preserve locked cells from baseSchedule
   weekDays.forEach(date => {
     schedule[date] = {};
     stations.forEach(station => {
-      schedule[date][station.id] = "";
+      const key = cellKey(date, station.id);
+      const isLocked = lockedCells?.has(key) && baseSchedule?.[date]?.[station.id];
+      schedule[date][station.id] = isLocked ? baseSchedule![date][station.id] : "";
     });
   });
 
@@ -21,7 +29,10 @@ export function generateWeeklySchedule(
   employees.forEach(emp => {
     employeeAssignments[emp.id] = {};
     weekDays.forEach(date => {
-      employeeAssignments[emp.id][date] = false;
+      // Mark as assigned if already placed via locked cell
+      employeeAssignments[emp.id][date] = stations.some(
+        st => schedule[date][st.id] === emp.name
+      );
     });
   });
 
@@ -30,48 +41,48 @@ export function generateWeeklySchedule(
       ? stations.map(s => s.id)
       : emp.availableStations;
 
-  // Count how many days an employee is already assigned
   const getAssignedCount = (empId: string) =>
     Object.values(employeeAssignments[empId]).filter(Boolean).length;
 
-  // Check if employee has reached their max weekly shifts
   const reachedMax = (emp: Employee) => {
     if (emp.maxWeeklyShifts === undefined || emp.maxWeeklyShifts === null) return false;
     return getAssignedCount(emp.id) >= emp.maxWeeklyShifts;
   };
 
-  // Pass 1: Specific requests for starred employees (guaranteed)
-  employees
-    .filter(emp => emp.hasStar)
-    .forEach(employee => {
-      employee.specificRequests?.forEach(request => {
-        if (
-          weekDays.includes(request.date) &&
-          !employee.unavailableDays?.includes(request.date) &&
-          availableStationsFor(employee).includes(request.stationId) &&
-          !reachedMax(employee)
-        ) {
-          schedule[request.date][request.stationId] = employee.name;
-          employeeAssignments[employee.id][request.date] = true;
-        }
-      });
-    });
+  const canPlace = (date: string, stationId: number) => {
+    const key = cellKey(date, stationId);
+    return !schedule[date][stationId] && !lockedCells?.has(key);
+  };
 
-  // Pass 2: Fill slots with starred employees (by minWeeklyShifts desc)
+  // Pass 1: Specific requests for starred employees
+  employees.filter(emp => emp.hasStar).forEach(employee => {
+    employee.specificRequests?.forEach(request => {
+      if (
+        weekDays.includes(request.date) &&
+        !employee.unavailableDays?.includes(request.date) &&
+        availableStationsFor(employee).includes(request.stationId) &&
+        canPlace(request.date, request.stationId) &&
+        !reachedMax(employee)
+      ) {
+        schedule[request.date][request.stationId] = employee.name;
+        employeeAssignments[employee.id][request.date] = true;
+      }
+    });
+  });
+
+  // Pass 2: Fill with starred employees (by minWeeklyShifts desc)
   employees
     .filter(emp => emp.hasStar)
     .sort((a, b) => b.minWeeklyShifts - a.minWeeklyShifts)
     .forEach(employee => {
       let assignedCount = getAssignedCount(employee.id);
-
       for (const date of weekDays) {
         if (assignedCount >= employee.minWeeklyShifts) break;
         if (reachedMax(employee)) break;
         if (employee.unavailableDays?.includes(date)) continue;
         if (employeeAssignments[employee.id][date]) continue;
-
         for (const stationId of availableStationsFor(employee)) {
-          if (!schedule[date][stationId]) {
+          if (canPlace(date, stationId)) {
             schedule[date][stationId] = employee.name;
             employeeAssignments[employee.id][date] = true;
             assignedCount++;
@@ -81,78 +92,67 @@ export function generateWeeklySchedule(
       }
     });
 
-  // Pass 3: Specific requests for non-starred employees (best effort)
-  employees
-    .filter(emp => !emp.hasStar)
-    .forEach(employee => {
-      employee.specificRequests?.forEach(request => {
-        if (
-          weekDays.includes(request.date) &&
-          !employee.unavailableDays?.includes(request.date) &&
-          availableStationsFor(employee).includes(request.stationId) &&
-          !schedule[request.date][request.stationId] &&
-          !employeeAssignments[employee.id][request.date] &&
-          !reachedMax(employee)
-        ) {
-          schedule[request.date][request.stationId] = employee.name;
-          employeeAssignments[employee.id][request.date] = true;
-        }
-      });
-    });
-
-  // Pass 4: Fill remaining with non-starred employees (one slot per day)
-  employees
-    .filter(emp => !emp.hasStar)
-    .forEach(employee => {
-      for (const date of weekDays) {
-        if (employeeAssignments[employee.id][date]) continue;
-        if (employee.unavailableDays?.includes(date)) continue;
-        if (reachedMax(employee)) break;
-
-        for (const stationId of availableStationsFor(employee)) {
-          if (!schedule[date][stationId]) {
-            schedule[date][stationId] = employee.name;
-            employeeAssignments[employee.id][date] = true;
-            break;
-          }
-        }
-      }
-    });
-
-  // Pass 5: Second round — fill remaining empty slots
-  weekDays.forEach(date => {
-    stations.forEach(station => {
-      if (!schedule[date][station.id]) {
-        const candidate = employees
-          .filter(emp => !emp.hasStar)
-          .find(emp =>
-            availableStationsFor(emp).includes(station.id) &&
-            !employeeAssignments[emp.id][date] &&
-            !emp.unavailableDays?.includes(date) &&
-            !reachedMax(emp)
-          );
-        if (candidate) {
-          schedule[date][station.id] = candidate.name;
-          employeeAssignments[candidate.id][date] = true;
-        }
+  // Pass 3: Specific requests for non-starred employees
+  employees.filter(emp => !emp.hasStar).forEach(employee => {
+    employee.specificRequests?.forEach(request => {
+      if (
+        weekDays.includes(request.date) &&
+        !employee.unavailableDays?.includes(request.date) &&
+        availableStationsFor(employee).includes(request.stationId) &&
+        canPlace(request.date, request.stationId) &&
+        !employeeAssignments[employee.id][request.date] &&
+        !reachedMax(employee)
+      ) {
+        schedule[request.date][request.stationId] = employee.name;
+        employeeAssignments[employee.id][request.date] = true;
       }
     });
   });
 
-  // Pass 6: Last resort — allow multiple stations/day for employees who permit it
-  weekDays.forEach(date => {
-    stations.forEach(station => {
-      if (!schedule[date][station.id]) {
-        const multiEmployee = employees.find(emp =>
-          availableStationsFor(emp).includes(station.id) &&
-          emp.canWorkMultipleStations === true &&
-          !emp.unavailableDays?.includes(date) &&
-          !reachedMax(emp)
-        );
-        if (multiEmployee) {
-          schedule[date][station.id] = multiEmployee.name;
+  // Pass 4: Fill with non-starred employees (one per day)
+  employees.filter(emp => !emp.hasStar).forEach(employee => {
+    for (const date of weekDays) {
+      if (employeeAssignments[employee.id][date]) continue;
+      if (employee.unavailableDays?.includes(date)) continue;
+      if (reachedMax(employee)) break;
+      for (const stationId of availableStationsFor(employee)) {
+        if (canPlace(date, stationId)) {
+          schedule[date][stationId] = employee.name;
+          employeeAssignments[employee.id][date] = true;
+          break;
         }
       }
+    }
+  });
+
+  // Pass 5: Second round for remaining empty slots
+  weekDays.forEach(date => {
+    stations.forEach(station => {
+      if (!canPlace(date, station.id)) return;
+      const candidate = employees.filter(emp => !emp.hasStar).find(emp =>
+        availableStationsFor(emp).includes(station.id) &&
+        !employeeAssignments[emp.id][date] &&
+        !emp.unavailableDays?.includes(date) &&
+        !reachedMax(emp)
+      );
+      if (candidate) {
+        schedule[date][station.id] = candidate.name;
+        employeeAssignments[candidate.id][date] = true;
+      }
+    });
+  });
+
+  // Pass 6: Last resort — allow multiple stations/day
+  weekDays.forEach(date => {
+    stations.forEach(station => {
+      if (!canPlace(date, station.id)) return;
+      const multi = employees.find(emp =>
+        availableStationsFor(emp).includes(station.id) &&
+        emp.canWorkMultipleStations === true &&
+        !emp.unavailableDays?.includes(date) &&
+        !reachedMax(emp)
+      );
+      if (multi) schedule[date][station.id] = multi.name;
     });
   });
 
@@ -169,15 +169,13 @@ export function getWeekDays(weekStart: Date): string[] {
 
 export function countFilledSlots(schedule: WeeklySchedule): number {
   return Object.values(schedule).reduce(
-    (acc, day) => acc + Object.values(day).filter(v => v !== "").length,
-    0
+    (acc, day) => acc + Object.values(day).filter(v => v !== "").length, 0
   );
 }
 
 export function countTotalSlots(schedule: WeeklySchedule): number {
   return Object.values(schedule).reduce(
-    (acc, day) => acc + Object.keys(day).length,
-    0
+    (acc, day) => acc + Object.keys(day).length, 0
   );
 }
 
