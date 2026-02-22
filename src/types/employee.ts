@@ -4,10 +4,11 @@ export interface Employee {
   availableStations: number[];
   hasStar: boolean;
   minWeeklyShifts: number;
-  maxWeeklyShifts?: number; // אם לא מוגדר — אין מגבלה
+  maxWeeklyShifts?: number;
   unavailableDays?: string[];
   specificRequests?: { date: string; stationId: number }[];
   canWorkMultipleStations?: boolean;
+  notes?: string;
 }
 
 export interface Station {
