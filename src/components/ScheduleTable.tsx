@@ -150,22 +150,30 @@ export function ScheduleTable({
                       >
                         <div className="flex items-center justify-center gap-1 group">
                           {name ? (
-                            <Badge
-                              variant="secondary"
-                              draggable={!locked}
-                              onDragStart={() => handleDragStart(date, station.id, name)}
-                              onDragEnd={() => { dragSource.current = null; setDragOver(null); }}
-                              className={`font-medium text-xs px-2 py-1 border cursor-grab active:cursor-grabbing select-none
-                                ${badgeStyle(shifts)}
-                                ${locked ? "ring-1 ring-orange-300 cursor-not-allowed" : ""}
-                              `}
-                              title={`${name}: ${shifts} משמרות השבוע${locked ? " (נעול)" : ""}`}
-                              onClick={() => !locked && handleCellClick(date, station.id)}
-                              onDoubleClick={() => setViewEmployee(name)}
-                            >
-                              {locked && <Lock className="h-2.5 w-2.5 ml-1 inline" />}
-                              {name}
-                            </Badge>
+                            <div className="flex items-center gap-0.5">
+                              <Badge
+                                variant="secondary"
+                                draggable={!locked}
+                                onDragStart={() => handleDragStart(date, station.id, name)}
+                                onDragEnd={() => { dragSource.current = null; setDragOver(null); }}
+                                className={`font-medium text-xs px-2 py-1 border select-none
+                                  ${locked ? "ring-1 ring-orange-300 cursor-not-allowed" : "cursor-grab active:cursor-grabbing"}
+                                  ${badgeStyle(shifts)}
+                                `}
+                                title={`לחץ לעריכה${locked ? " (נעול)" : ""}`}
+                                onClick={() => !locked && handleCellClick(date, station.id)}
+                              >
+                                {locked && <Lock className="h-2.5 w-2.5 ml-1 inline" />}
+                                {name}
+                              </Badge>
+                              <button
+                                className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground"
+                                title={`פרטי ${name}`}
+                                onClick={() => setViewEmployee(name)}
+                              >
+                                <Eye className="h-3 w-3" />
+                              </button>
+                            </div>
                           ) : (
                             <span
                               className="text-muted-foreground/60 text-xs cursor-pointer hover:text-primary px-2 py-1 rounded hover:bg-primary/5 transition-colors"
@@ -207,7 +215,7 @@ export function ScheduleTable({
           <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-yellow-200 inline-block" /> בינוני (3)</span>
           <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-red-200 inline-block" /> גבוה (4+)</span>
           <span className="flex items-center gap-1 mr-2"><Lock className="h-3 w-3 text-orange-400" /> נעול</span>
-          <span className="mr-auto text-muted-foreground/60">לחץ לעריכה · גרור להחלפה · לחיצה כפולה לפרטי עובד · Hover לנעילה</span>
+          <span className="mr-auto text-muted-foreground/60">לחץ לעריכה · גרור להחלפה · 👁 לפרטי עובד · 🔒 לנעילה</span>
         </div>
       </Card>
 
