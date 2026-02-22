@@ -20,7 +20,10 @@ function getShiftCount(name: string, schedule?: WeeklySchedule | null): number {
   );
 }
 
-function workloadLabel(shifts: number): { text: string; classes: string } {
+function workloadLabel(
+  shifts: number,
+  max?: number
+): { text: string; classes: string } {
   if (shifts === 0)
     return { text: "לא משובץ", classes: "bg-slate-100 text-slate-500" };
   if (shifts <= 2)
@@ -58,7 +61,7 @@ export function EmployeeList({
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {employees.map(employee => {
         const shifts = getShiftCount(employee.name, schedule);
-        const wl = workloadLabel(shifts);
+        const wl = workloadLabel(shifts, employee.maxWeeklyShifts);
 
         const stationNames =
           employee.availableStations.length === 0
@@ -127,7 +130,11 @@ export function EmployeeList({
             {/* Footer */}
             <div className="flex items-center justify-between mt-3 pt-2 border-t text-xs text-muted-foreground">
               <span>
-                מינימום: <strong>{employee.minWeeklyShifts}</strong> משמרות/שבוע
+                {employee.minWeeklyShifts}
+                {employee.maxWeeklyShifts !== undefined
+                  ? `–${employee.maxWeeklyShifts}`
+                  : "+"}{" "}
+                משמרות/שבוע
               </span>
               {employee.canWorkMultipleStations && (
                 <Badge variant="outline" className="text-xs gap-1">
