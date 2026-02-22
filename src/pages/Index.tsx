@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import * as XLSX from "xlsx";
-import { toPng } from "html-to-image";
+import { toBlob } from "html-to-image";
 
 function getNextSunday(date: Date): Date {
   const result = new Date(date);
@@ -225,18 +225,27 @@ const Index = () => {
       return;
     }
     try {
-      // html-to-image requires multiple passes for fonts/images to load
-      await toPng(el, { backgroundColor: "#ffffff" });
-      await toPng(el, { backgroundColor: "#ffffff" });
-      const dataUrl = await toPng(el, { quality: 1, pixelRatio: 2, backgroundColor: "#ffffff" });
+      // First pass to warm up fonts
+      await toBlob(el, { backgroundColor: "#ffffff" });
+      // Second pass for actual export
+      const blob = await toBlob(el, {
+        backgroundColor: "#ffffff",
+        pixelRatio: 2,
+        filter: (node) => {
+          return !(node instanceof HTMLElement && node.tagName === "STYLE");
+        },
+      });
+     
+      if (!blob) throw new Error("blob is null");
+      const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.download = `שיבוץ_${weekStart.toLocaleDateString("he-IL").replace(/\//g, "-")}.png`;
-      link.href = dataUrl;
+      link.href = url;
       link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
       toast({ title: "התמונה הורדה בהצלחה" });
-    } catch (err) {
-      console.error("Export image error:", err);
-      toast({ title: "שגיאה בייצוא תמונה", description: String(err), variant: "destructive" });
+    } catch {
+      toast({ title: "שגיאה בייצוא תמונה", variant: "destructive" });
     }
   };
 
