@@ -30,6 +30,16 @@ export function generateWeeklySchedule(
       ? stations.map(s => s.id)
       : emp.availableStations;
 
+  // Count how many days an employee is already assigned
+  const getAssignedCount = (empId: string) =>
+    Object.values(employeeAssignments[empId]).filter(Boolean).length;
+
+  // Check if employee has reached their max weekly shifts
+  const reachedMax = (emp: Employee) => {
+    if (emp.maxWeeklyShifts === undefined || emp.maxWeeklyShifts === null) return false;
+    return getAssignedCount(emp.id) >= emp.maxWeeklyShifts;
+  };
+
   // Pass 1: Specific requests for starred employees (guaranteed)
   employees
     .filter(emp => emp.hasStar)
@@ -38,7 +48,8 @@ export function generateWeeklySchedule(
         if (
           weekDays.includes(request.date) &&
           !employee.unavailableDays?.includes(request.date) &&
-          availableStationsFor(employee).includes(request.stationId)
+          availableStationsFor(employee).includes(request.stationId) &&
+          !reachedMax(employee)
         ) {
           schedule[request.date][request.stationId] = employee.name;
           employeeAssignments[employee.id][request.date] = true;
@@ -51,10 +62,11 @@ export function generateWeeklySchedule(
     .filter(emp => emp.hasStar)
     .sort((a, b) => b.minWeeklyShifts - a.minWeeklyShifts)
     .forEach(employee => {
-      let assignedCount = Object.values(employeeAssignments[employee.id]).filter(Boolean).length;
+      let assignedCount = getAssignedCount(employee.id);
 
       for (const date of weekDays) {
         if (assignedCount >= employee.minWeeklyShifts) break;
+        if (reachedMax(employee)) break;
         if (employee.unavailableDays?.includes(date)) continue;
         if (employeeAssignments[employee.id][date]) continue;
 
@@ -79,7 +91,8 @@ export function generateWeeklySchedule(
           !employee.unavailableDays?.includes(request.date) &&
           availableStationsFor(employee).includes(request.stationId) &&
           !schedule[request.date][request.stationId] &&
-          !employeeAssignments[employee.id][request.date]
+          !employeeAssignments[employee.id][request.date] &&
+          !reachedMax(employee)
         ) {
           schedule[request.date][request.stationId] = employee.name;
           employeeAssignments[employee.id][request.date] = true;
@@ -94,6 +107,7 @@ export function generateWeeklySchedule(
       for (const date of weekDays) {
         if (employeeAssignments[employee.id][date]) continue;
         if (employee.unavailableDays?.includes(date)) continue;
+        if (reachedMax(employee)) break;
 
         for (const stationId of availableStationsFor(employee)) {
           if (!schedule[date][stationId]) {
@@ -114,7 +128,8 @@ export function generateWeeklySchedule(
           .find(emp =>
             availableStationsFor(emp).includes(station.id) &&
             !employeeAssignments[emp.id][date] &&
-            !emp.unavailableDays?.includes(date)
+            !emp.unavailableDays?.includes(date) &&
+            !reachedMax(emp)
           );
         if (candidate) {
           schedule[date][station.id] = candidate.name;
@@ -131,7 +146,8 @@ export function generateWeeklySchedule(
         const multiEmployee = employees.find(emp =>
           availableStationsFor(emp).includes(station.id) &&
           emp.canWorkMultipleStations === true &&
-          !emp.unavailableDays?.includes(date)
+          !emp.unavailableDays?.includes(date) &&
+          !reachedMax(emp)
         );
         if (multiEmployee) {
           schedule[date][station.id] = multiEmployee.name;
