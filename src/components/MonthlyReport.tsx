@@ -4,8 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { FileSpreadsheet, Printer, BarChart2 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
+import { FileSpreadsheet, Printer, BarChart2 } from "lucide-react";
 import * as XLSX from "xlsx";
 
 interface MonthlyReportProps {
@@ -42,7 +42,6 @@ function buildReport(
     Object.entries(saved.schedule).forEach(([date, daySlots]) => {
       const d = new Date(date);
       if (d.getMonth() !== month || d.getFullYear() !== year) return;
-
       Object.entries(daySlots).forEach(([stationId, empName]) => {
         if (!empName) return;
         const stationName = stationMap.get(Number(stationId)) ?? `עמדה ${stationId}`;
@@ -56,7 +55,6 @@ function buildReport(
     });
   });
 
-  // Deduplicate: same employee, same date → count once
   const result: EmployeeReport[] = [];
   empMap.forEach((shifts, name) => {
     const seen = new Set<string>();
@@ -94,40 +92,31 @@ export function MonthlyReport({ savedSchedules, stations }: MonthlyReportProps) 
 
   const handleExportExcel = () => {
     const wb = XLSX.utils.book_new();
-
-    // Sheet 1: Summary
     const summaryData = [
       [`דוח משמרות חודשי — ${HEBREW_MONTHS[month]} ${year}`],
       [],
-      ["שם עובד", "סה\"כ משמרות"],
+      ["שם עובד", 'סה"כ משמרות'],
       ...report.map(e => [e.name, e.totalShifts]),
       [],
-      ["סה\"כ", totalShifts],
+      ['סה"כ', totalShifts],
     ];
     const ws1 = XLSX.utils.aoa_to_sheet(summaryData);
     ws1["!cols"] = [{ wch: 20 }, { wch: 15 }];
     XLSX.utils.book_append_sheet(wb, ws1, "סיכום");
 
-    // Sheet 2: Detailed
-    const detailData = [
+    const detailData: (string | number)[][] = [
       [`פירוט משמרות — ${HEBREW_MONTHS[month]} ${year}`],
       [],
       ["שם עובד", "תאריך", "עמדה"],
     ];
     report.forEach(emp => {
-      emp.shifts.forEach(s => {
-        detailData.push([emp.name, s.date, s.stationName]);
-      });
+      emp.shifts.forEach(s => detailData.push([emp.name, s.date, s.stationName]));
     });
     const ws2 = XLSX.utils.aoa_to_sheet(detailData);
     ws2["!cols"] = [{ wch: 20 }, { wch: 14 }, { wch: 20 }];
     XLSX.utils.book_append_sheet(wb, ws2, "פירוט");
 
     XLSX.writeFile(wb, `דוח_שכר_${HEBREW_MONTHS[month]}_${year}.xlsx`);
-  };
-
-  const handlePrint = () => {
-    window.print();
   };
 
   if (savedSchedules.length === 0) {
@@ -143,14 +132,13 @@ export function MonthlyReport({ savedSchedules, stations }: MonthlyReportProps) 
 
   return (
     <div className="space-y-6" id="monthly-report-print">
+
       {/* Controls */}
       <div className="flex flex-wrap items-end gap-4 no-print">
         <div className="space-y-1">
           <label className="text-sm font-medium">חודש</label>
           <Select value={String(month)} onValueChange={v => setMonth(Number(v))}>
-            <SelectTrigger className="w-[140px]">
-              <SelectValue />
-            </SelectTrigger>
+            <SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
             <SelectContent>
               {HEBREW_MONTHS.map((m, i) => (
                 <SelectItem key={i} value={String(i)}>{m}</SelectItem>
@@ -162,9 +150,7 @@ export function MonthlyReport({ savedSchedules, stations }: MonthlyReportProps) 
         <div className="space-y-1">
           <label className="text-sm font-medium">שנה</label>
           <Select value={String(year)} onValueChange={v => setYear(Number(v))}>
-            <SelectTrigger className="w-[100px]">
-              <SelectValue />
-            </SelectTrigger>
+            <SelectTrigger className="w-[100px]"><SelectValue /></SelectTrigger>
             <SelectContent>
               {years.map(y => (
                 <SelectItem key={y} value={String(y)}>{y}</SelectItem>
@@ -174,7 +160,6 @@ export function MonthlyReport({ savedSchedules, stations }: MonthlyReportProps) 
         </div>
 
         <div className="flex items-center gap-3 mr-auto">
-        <div className="flex items-center gap-2">
           <Switch
             id="show-details"
             checked={showDetails}
@@ -183,25 +168,24 @@ export function MonthlyReport({ savedSchedules, stations }: MonthlyReportProps) 
           <label htmlFor="show-details" className="text-sm cursor-pointer">
             פירוט לפי עובד
           </label>
-        </div>
+
           <Button variant="outline" onClick={handleExportExcel}>
             <FileSpreadsheet className="h-4 w-4 ml-2" />
             ייצא Excel
           </Button>
-          <Button variant="outline" onClick={handlePrint}>
+          <Button variant="outline" onClick={() => window.print()}>
             <Printer className="h-4 w-4 ml-2" />
             הדפס / PDF
           </Button>
         </div>
       </div>
-      </div>
 
-      {/* Report title for print */}
+      {/* Print title */}
       <div className="print-only hidden text-center mb-4">
         <h2 className="text-2xl font-bold">דוח משמרות — {HEBREW_MONTHS[month]} {year}</h2>
       </div>
 
-      {/* Summary card */}
+      {/* Summary table */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center justify-between">
@@ -236,15 +220,11 @@ export function MonthlyReport({ savedSchedules, stations }: MonthlyReportProps) 
                       <tr key={emp.name} className={i % 2 === 0 ? "bg-white" : "bg-muted/20"}>
                         <td className="py-2 px-3 font-medium">{emp.name}</td>
                         <td className="py-2 px-3 text-center">
-                          <Badge
-                            className={
-                              emp.totalShifts <= 2
-                                ? "bg-green-100 text-green-700"
-                                : emp.totalShifts <= 3
-                                ? "bg-yellow-100 text-yellow-700"
-                                : "bg-blue-100 text-blue-700"
-                            }
-                          >
+                          <Badge className={
+                            emp.totalShifts <= 2 ? "bg-green-100 text-green-700" :
+                            emp.totalShifts <= 3 ? "bg-yellow-100 text-yellow-700" :
+                            "bg-blue-100 text-blue-700"
+                          }>
                             {emp.totalShifts}
                           </Badge>
                         </td>
@@ -267,7 +247,7 @@ export function MonthlyReport({ savedSchedules, stations }: MonthlyReportProps) 
         </CardContent>
       </Card>
 
-      {/* Detailed breakdown per employee */}
+      {/* Detailed breakdown — shown only when toggle is on */}
       {report.length > 0 && showDetails && (
         <div className="space-y-4">
           <h3 className="text-lg font-semibold">פירוט לפי עובד</h3>
@@ -304,7 +284,6 @@ export function MonthlyReport({ savedSchedules, stations }: MonthlyReportProps) 
         </div>
       )}
 
-      {/* Print styles */}
       <style>{`
         @media print {
           .no-print { display: none !important; }
