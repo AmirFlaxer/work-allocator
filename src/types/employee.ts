@@ -4,9 +4,9 @@ export interface Employee {
   availableStations: number[];
   hasStar: boolean;
   minWeeklyShifts: number;
-  unavailableDays?: string[]; // ISO date strings
+  unavailableDays?: string[];
   specificRequests?: { date: string; stationId: number }[];
-  canWorkMultipleStations?: boolean; // Can be assigned to multiple stations per day
+  canWorkMultipleStations?: boolean;
 }
 
 export interface Station {
@@ -16,7 +16,7 @@ export interface Station {
 
 export interface WeeklySchedule {
   [date: string]: {
-    [stationId: number]: string; // employee name
+    [stationId: number]: string;
   };
 }
 
@@ -26,4 +26,29 @@ export interface SavedSchedule {
   schedule: WeeklySchedule;
   weekStart: string;
   savedAt: string;
+}
+
+export type TaskPriority = 'low' | 'normal' | 'urgent' | 'critical';
+export type TaskStatus = 'open' | 'in-progress' | 'done';
+
+export interface Task {
+  id: string;
+  title: string;
+  assignedTo: string;
+  stationId?: number;
+  date?: string;
+  priority: TaskPriority;
+  status: TaskStatus;
+  dueDate?: string;
+  createdAt: string;
+  completedAt?: string;
+  note?: string;
+}
+
+export interface ScheduleLog {
+  id: string;
+  action: 'generated' | 'saved' | 'loaded' | 'modified';
+  description: string;
+  timestamp: string;
+  weekStart?: string;
 }
