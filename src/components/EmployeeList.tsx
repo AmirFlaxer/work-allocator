@@ -127,6 +127,13 @@ export function EmployeeList({
               </div>
             </div>
 
+            {/* Notes */}
+            {employee.notes && (
+              <div className="mt-2 text-xs text-muted-foreground bg-muted/40 rounded px-2 py-1.5 italic">
+                {employee.notes}
+              </div>
+            )}
+
             {/* Footer */}
             <div className="flex items-center justify-between mt-3 pt-2 border-t text-xs text-muted-foreground">
               <span>
