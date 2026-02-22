@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
-import { Lock, LockOpen, Pencil, X } from "lucide-react";
+import { Lock, LockOpen, Pencil, X, Eye } from "lucide-react";
 import { calculateWorkloads } from "@/lib/scheduler";
 
 interface ScheduleTableProps {
