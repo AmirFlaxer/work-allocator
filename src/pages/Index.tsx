@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import * as XLSX from "xlsx";
-import { toBlob } from "html-to-image";
+// html-to-image removed
 
 function getNextSunday(date: Date): Date {
   const result = new Date(date);
@@ -218,37 +218,36 @@ const Index = () => {
     toast({ title: "קובץ האקסל הורד" });
   };
 
-  const handleExportToImage = async () => {
+    const handleExportToImage = async () => {
     const el = document.getElementById("schedule-table");
     if (!el) {
       toast({ title: "שגיאה", description: "לא נמצאה טבלת השיבוץ", variant: "destructive" });
       return;
     }
     try {
-      // First pass to warm up fonts
-      await toBlob(el, { backgroundColor: "#ffffff" });
-      // Second pass for actual export
-      const blob = await toBlob(el, {
+      const { default: html2canvas } = await import("html2canvas");
+      const canvas = await html2canvas(el, {
         backgroundColor: "#ffffff",
-        pixelRatio: 2,
-        filter: (node) => {
-          return !(node instanceof HTMLElement && node.tagName === "STYLE");
-        },
+        scale: 2,
+        useCORS: true,
+        logging: false,
       });
-     
-      if (!blob) throw new Error("blob is null");
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.download = `שיבוץ_${weekStart.toLocaleDateString("he-IL").replace(/\//g, "-")}.png`;
-      link.href = url;
-      link.click();
-      setTimeout(() => URL.revokeObjectURL(url), 5000);
-      toast({ title: "התמונה הורדה בהצלחה" });
-    } catch {
-      toast({ title: "שגיאה בייצוא תמונה", variant: "destructive" });
+      canvas.toBlob(blob => {
+        if (!blob) return;
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.download = `שיבוץ_${weekStart.toLocaleDateString("he-IL").replace(/\//g, "-")}.png`;
+        link.href = url;
+        link.click();
+        setTimeout(() => URL.revokeObjectURL(url), 5000);
+        toast({ title: "התמונה הורדה בהצלחה" });
+      }, "image/png");
+    } catch (err) {
+      console.error(err);
+      toast({ title: "שגיאה בייצוא תמונה", description: String(err), variant: "destructive" });
     }
   };
-
+  
   // ── Filtered employees ─────────────────────────────────
   const filteredEmployees = employees.filter(e =>
     e.name.toLowerCase().includes(employeeSearch.toLowerCase())
