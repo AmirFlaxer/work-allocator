@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { FileSpreadsheet, Printer, BarChart2 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import * as XLSX from "xlsx";
 
 interface MonthlyReportProps {
@@ -75,6 +76,7 @@ export function MonthlyReport({ savedSchedules, stations }: MonthlyReportProps) 
   const now = new Date();
   const [month, setMonth] = useState(now.getMonth());
   const [year, setYear] = useState(now.getFullYear());
+  const [showDetails, setShowDetails] = useState(false);
 
   const years = useMemo(() => {
     const ys = new Set<number>();
@@ -171,7 +173,17 @@ export function MonthlyReport({ savedSchedules, stations }: MonthlyReportProps) 
           </Select>
         </div>
 
-        <div className="flex gap-2 mr-auto">
+        <div className="flex items-center gap-3 mr-auto">
+        <div className="flex items-center gap-2">
+          <Switch
+            id="show-details"
+            checked={showDetails}
+            onCheckedChange={setShowDetails}
+          />
+          <label htmlFor="show-details" className="text-sm cursor-pointer">
+            פירוט לפי עובד
+          </label>
+        </div>
           <Button variant="outline" onClick={handleExportExcel}>
             <FileSpreadsheet className="h-4 w-4 ml-2" />
             ייצא Excel
@@ -181,6 +193,7 @@ export function MonthlyReport({ savedSchedules, stations }: MonthlyReportProps) 
             הדפס / PDF
           </Button>
         </div>
+      </div>
       </div>
 
       {/* Report title for print */}
@@ -255,7 +268,7 @@ export function MonthlyReport({ savedSchedules, stations }: MonthlyReportProps) 
       </Card>
 
       {/* Detailed breakdown per employee */}
-      {report.length > 0 && (
+      {report.length > 0 && showDetails && (
         <div className="space-y-4">
           <h3 className="text-lg font-semibold">פירוט לפי עובד</h3>
           <div className="grid gap-4 md:grid-cols-2">
