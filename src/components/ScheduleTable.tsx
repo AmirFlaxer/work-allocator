@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { WeeklySchedule, Station, Employee } from "@/types/employee";
 import { Card } from "@/components/ui/card";
 import {
@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
-import { Lock, LockOpen, Pencil } from "lucide-react";
+import { Lock, LockOpen, Pencil, X } from "lucide-react";
 import { calculateWorkloads } from "@/lib/scheduler";
 
 interface ScheduleTableProps {
@@ -29,10 +29,10 @@ function cellKey(date: string, stationId: number) {
 }
 
 function badgeStyle(shifts: number): string {
-  if (shifts === 0) return "bg-slate-100 text-slate-600 hover:bg-slate-100";
-  if (shifts <= 2) return "bg-green-100 text-green-700 hover:bg-green-100 border-green-200";
-  if (shifts <= 3) return "bg-yellow-100 text-yellow-700 hover:bg-yellow-100 border-yellow-200";
-  return "bg-red-100 text-red-700 hover:bg-red-100 border-red-200";
+  if (shifts === 0) return "bg-slate-100 text-slate-600";
+  if (shifts <= 2) return "bg-green-100 text-green-700 border-green-200";
+  if (shifts <= 3) return "bg-yellow-100 text-yellow-700 border-yellow-200";
+  return "bg-red-100 text-red-700 border-red-200";
 }
 
 function getWeekDays(weekStart: Date): string[] {
@@ -51,7 +51,15 @@ export function ScheduleTable({
   const hebrewDaysReversed = [...HEBREW_DAYS].reverse();
   const workloads = calculateWorkloads(schedule);
 
+  // Edit dialog
   const [editCell, setEditCell] = useState<{ date: string; stationId: number } | null>(null);
+
+  // Employee detail dialog
+  const [viewEmployee, setViewEmployee] = useState<string | null>(null);
+
+  // Drag state
+  const dragSource = useRef<{ date: string; stationId: number; name: string } | null>(null);
+  const [dragOver, setDragOver] = useState<string | null>(null);
 
   const emptyPerDay = weekDays.map(date =>
     Object.values(schedule[date] ?? {}).filter(v => v === "").length
@@ -62,11 +70,44 @@ export function ScheduleTable({
     setEditCell({ date, stationId });
   };
 
-  const handleSelect = (name: string) => {
+  const handleSelectEmployee = (name: string) => {
     if (!editCell) return;
     onCellEdit(editCell.date, editCell.stationId, name);
     setEditCell(null);
   };
+
+  // Drag handlers
+  const handleDragStart = (date: string, stationId: number, name: string) => {
+    if (lockedCells.has(cellKey(date, stationId))) return;
+    dragSource.current = { date, stationId, name };
+  };
+
+  const handleDrop = (targetDate: string, targetStationId: number) => {
+    const src = dragSource.current;
+    if (!src) return;
+    if (lockedCells.has(cellKey(targetDate, targetStationId))) return;
+    if (src.date === targetDate && src.stationId === targetStationId) return;
+
+    // Swap
+    const targetName = schedule[targetDate]?.[targetStationId] ?? "";
+    onCellEdit(targetDate, targetStationId, src.name);
+    onCellEdit(src.date, src.stationId, targetName);
+    dragSource.current = null;
+    setDragOver(null);
+  };
+
+  // Employee view: all shifts this week
+  const employeeWeekShifts = viewEmployee
+    ? weekDays.flatMap(date =>
+        stations
+          .filter(s => schedule[date]?.[s.id] === viewEmployee)
+          .map(s => ({
+            day: hebrewDaysReversed[weekDays.indexOf(date)],
+            date,
+            station: s.name,
+          }))
+      )
+    : [];
 
   return (
     <>
@@ -75,22 +116,17 @@ export function ScheduleTable({
           <Table>
             <TableHeader>
               <TableRow className="bg-primary/5">
-                {weekDays.map((date, idx) => {
-                  const empty = emptyPerDay[idx];
-                  return (
-                    <TableHead key={date} className="text-center font-bold min-w-[150px] py-3">
-                      <div className="text-sm">{hebrewDaysReversed[idx]}</div>
-                      <div className="text-xs font-normal text-muted-foreground">
-                        {new Date(date).toLocaleDateString("he-IL", { day: "2-digit", month: "2-digit" })}
-                      </div>
-                      {empty > 0 && (
-                        <div className="text-xs text-red-500 font-normal mt-0.5">
-                          ⚠️ {empty} חסרות
-                        </div>
-                      )}
-                    </TableHead>
-                  );
-                })}
+                {weekDays.map((date, idx) => (
+                  <TableHead key={date} className="text-center font-bold min-w-[150px] py-3">
+                    <div className="text-sm">{hebrewDaysReversed[idx]}</div>
+                    <div className="text-xs font-normal text-muted-foreground">
+                      {new Date(date).toLocaleDateString("he-IL", { day: "2-digit", month: "2-digit" })}
+                    </div>
+                    {emptyPerDay[idx] > 0 && (
+                      <div className="text-xs text-red-500 mt-0.5">⚠️ {emptyPerDay[idx]} חסרות</div>
+                    )}
+                  </TableHead>
+                ))}
                 <TableHead className="font-bold text-right min-w-[120px]">עמדה</TableHead>
               </TableRow>
             </TableHeader>
@@ -102,23 +138,37 @@ export function ScheduleTable({
                     const shifts = workloads[name] ?? 0;
                     const key = cellKey(date, station.id);
                     const locked = lockedCells.has(key);
+                    const isDragOver = dragOver === key;
 
                     return (
-                      <TableCell key={date} className="text-center py-2 px-2">
+                      <TableCell
+                        key={date}
+                        className={`text-center py-2 px-2 transition-colors ${isDragOver ? "bg-primary/10" : ""}`}
+                        onDragOver={e => { e.preventDefault(); setDragOver(key); }}
+                        onDragLeave={() => setDragOver(null)}
+                        onDrop={() => handleDrop(date, station.id)}
+                      >
                         <div className="flex items-center justify-center gap-1 group">
                           {name ? (
                             <Badge
                               variant="secondary"
-                              className={`font-medium text-xs px-2 py-1 border cursor-pointer ${badgeStyle(shifts)} ${locked ? "ring-1 ring-orange-300" : ""}`}
+                              draggable={!locked}
+                              onDragStart={() => handleDragStart(date, station.id, name)}
+                              onDragEnd={() => { dragSource.current = null; setDragOver(null); }}
+                              className={`font-medium text-xs px-2 py-1 border cursor-grab active:cursor-grabbing select-none
+                                ${badgeStyle(shifts)}
+                                ${locked ? "ring-1 ring-orange-300 cursor-not-allowed" : ""}
+                              `}
                               title={`${name}: ${shifts} משמרות השבוע${locked ? " (נעול)" : ""}`}
-                              onClick={() => handleCellClick(date, station.id)}
+                              onClick={() => !locked && handleCellClick(date, station.id)}
+                              onDoubleClick={() => setViewEmployee(name)}
                             >
                               {locked && <Lock className="h-2.5 w-2.5 ml-1 inline" />}
                               {name}
                             </Badge>
                           ) : (
                             <span
-                              className="text-muted-foreground/60 text-xs cursor-pointer hover:text-primary transition-colors px-2 py-1 rounded hover:bg-primary/5"
+                              className="text-muted-foreground/60 text-xs cursor-pointer hover:text-primary px-2 py-1 rounded hover:bg-primary/5 transition-colors"
                               onClick={() => handleCellClick(date, station.id)}
                             >
                               + שבץ
@@ -153,21 +203,11 @@ export function ScheduleTable({
         {/* Legend */}
         <div className="flex flex-wrap items-center gap-4 px-4 py-2 border-t bg-muted/20 text-xs text-muted-foreground">
           <span className="font-medium">עומס:</span>
-          <span className="flex items-center gap-1">
-            <span className="w-2.5 h-2.5 rounded-sm bg-green-200 inline-block" /> נמוך (1-2)
-          </span>
-          <span className="flex items-center gap-1">
-            <span className="w-2.5 h-2.5 rounded-sm bg-yellow-200 inline-block" /> בינוני (3)
-          </span>
-          <span className="flex items-center gap-1">
-            <span className="w-2.5 h-2.5 rounded-sm bg-red-200 inline-block" /> גבוה (4+)
-          </span>
-          <span className="flex items-center gap-1 mr-2">
-            <Lock className="h-3 w-3 text-orange-400" /> נעול
-          </span>
-          <span className="flex items-center gap-1 mr-auto text-xs text-muted-foreground/70">
-            לחץ על תא לעריכה • העבר עכבר לנעילה
-          </span>
+          <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-green-200 inline-block" /> נמוך (1-2)</span>
+          <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-yellow-200 inline-block" /> בינוני (3)</span>
+          <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-red-200 inline-block" /> גבוה (4+)</span>
+          <span className="flex items-center gap-1 mr-2"><Lock className="h-3 w-3 text-orange-400" /> נעול</span>
+          <span className="mr-auto text-muted-foreground/60">לחץ לעריכה · גרור להחלפה · לחיצה כפולה לפרטי עובד · Hover לנעילה</span>
         </div>
       </Card>
 
@@ -176,15 +216,14 @@ export function ScheduleTable({
         <DialogContent className="max-w-sm" dir="rtl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Pencil className="h-4 w-4" />
-              בחר עובד לתא
+              <Pencil className="h-4 w-4" /> בחר עובד לתא
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-1 max-h-72 overflow-y-auto">
             <Button
               variant="ghost"
               className="w-full justify-start text-muted-foreground"
-              onClick={() => handleSelect("")}
+              onClick={() => handleSelectEmployee("")}
             >
               — רוקן תא —
             </Button>
@@ -193,13 +232,55 @@ export function ScheduleTable({
                 key={emp.id}
                 variant="ghost"
                 className="w-full justify-start"
-                onClick={() => handleSelect(emp.name)}
+                onClick={() => handleSelectEmployee(emp.name)}
               >
-                {emp.hasStar && "⭐ "}
-                {emp.name}
+                {emp.hasStar && "⭐ "}{emp.name}
+                {emp.notes && (
+                  <span className="mr-auto text-xs text-muted-foreground truncate max-w-[140px]">
+                    {emp.notes}
+                  </span>
+                )}
               </Button>
             ))}
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Employee detail dialog */}
+      <Dialog open={!!viewEmployee} onOpenChange={open => !open && setViewEmployee(null)}>
+        <DialogContent className="max-w-sm" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center justify-between">
+              <span>{viewEmployee}</span>
+              <Badge variant="secondary">{workloads[viewEmployee ?? ""] ?? 0} משמרות השבוע</Badge>
+            </DialogTitle>
+          </DialogHeader>
+          {employeeWeekShifts.length === 0 ? (
+            <p className="text-muted-foreground text-sm text-center py-4">אין משמרות השבוע</p>
+          ) : (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b">
+                  <th className="text-right py-1 font-medium">יום</th>
+                  <th className="text-right py-1 font-medium">עמדה</th>
+                </tr>
+              </thead>
+              <tbody>
+                {employeeWeekShifts.map((s, i) => (
+                  <tr key={i} className={i % 2 === 0 ? "" : "bg-muted/20"}>
+                    <td className="py-1.5">{s.day}</td>
+                    <td className="py-1.5 text-muted-foreground">{s.station}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+          {viewEmployee && employees.find(e => e.name === viewEmployee)?.notes && (
+            <div className="mt-2 p-3 bg-muted/30 rounded-md text-sm text-muted-foreground">
+              <span className="font-medium text-foreground">הערות: </span>
+              {employees.find(e => e.name === viewEmployee)?.notes}
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </>
