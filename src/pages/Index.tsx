@@ -220,16 +220,23 @@ const Index = () => {
 
   const handleExportToImage = async () => {
     const el = document.getElementById("schedule-table");
-    if (!el) return;
+    if (!el) {
+      toast({ title: "שגיאה", description: "לא נמצאה טבלת השיבוץ", variant: "destructive" });
+      return;
+    }
     try {
+      // html-to-image requires multiple passes for fonts/images to load
+      await toPng(el, { backgroundColor: "#ffffff" });
+      await toPng(el, { backgroundColor: "#ffffff" });
       const dataUrl = await toPng(el, { quality: 1, pixelRatio: 2, backgroundColor: "#ffffff" });
       const link = document.createElement("a");
       link.download = `שיבוץ_${weekStart.toLocaleDateString("he-IL").replace(/\//g, "-")}.png`;
       link.href = dataUrl;
       link.click();
-      toast({ title: "התמונה הורדה" });
-    } catch {
-      toast({ title: "שגיאה בייצוא תמונה", variant: "destructive" });
+      toast({ title: "התמונה הורדה בהצלחה" });
+    } catch (err) {
+      console.error("Export image error:", err);
+      toast({ title: "שגיאה בייצוא תמונה", description: String(err), variant: "destructive" });
     }
   };
 
