@@ -47,8 +47,8 @@ export function ScheduleTable({
   schedule, stations, employees, weekStart,
   lockedCells, onCellEdit, onToggleLock,
 }: ScheduleTableProps) {
-  const weekDays = getWeekDays(weekStart).reverse();
-  const hebrewDaysReversed = [...HEBREW_DAYS].reverse();
+  const weekDays = getWeekDays(weekStart);
+  const hebrewDaysReversed = HEBREW_DAYS;
   const workloads = calculateWorkloads(schedule);
 
   // Edit dialog
