@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import * as XLSX from "xlsx";
-// html-to-image removed
+import { toPng } from "html-to-image";
 
 function getNextSunday(date: Date): Date {
   const result = new Date(date);
@@ -225,25 +225,34 @@ const Index = () => {
       return;
     }
     try {
-      const { default: html2canvas } = await import("html2canvas");
-      const canvas = await html2canvas(el, {
+      const filter = (node: HTMLElement) => {
+        try {
+          if (node.tagName === "STYLE") return false;
+          if (node.tagName === "SCRIPT") return false;
+          return true;
+        } catch {
+          return true;
+        }
+      };
+
+      const options = {
         backgroundColor: "#ffffff",
-        scale: 2,
-        useCORS: true,
-        logging: false,
-      });
-      canvas.toBlob(blob => {
-        if (!blob) return;
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.download = `שיבוץ_${weekStart.toLocaleDateString("he-IL").replace(/\//g, "-")}.png`;
-        link.href = url;
-        link.click();
-        setTimeout(() => URL.revokeObjectURL(url), 5000);
-        toast({ title: "התמונה הורדה בהצלחה" });
-      }, "image/png");
+        pixelRatio: 2,
+        skipFonts: true,
+        filter,
+      };
+
+      // Warm up pass
+      await toPng(el, options).catch(() => {});
+      // Real export
+      const dataUrl = await toPng(el, options);
+      const link = document.createElement("a");
+      link.download = `שיבוץ_${weekStart.toLocaleDateString("he-IL").replace(/\//g, "-")}.png`;
+      link.href = dataUrl;
+      link.click();
+      toast({ title: "התמונה הורדה בהצלחה" });
     } catch (err) {
-      console.error(err);
+      console.error("export error:", err);
       toast({ title: "שגיאה בייצוא תמונה", description: String(err), variant: "destructive" });
     }
   };
