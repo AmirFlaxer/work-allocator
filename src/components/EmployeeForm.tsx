@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card } from "@/components/ui/card";
+import { Textarea } from "@/components/ui/textarea";
 
 interface EmployeeFormProps {
   employee?: Employee;
@@ -16,9 +17,7 @@ interface EmployeeFormProps {
 export function EmployeeForm({ employee, stations, onSave, onCancel }: EmployeeFormProps) {
   const [name, setName] = useState(employee?.name || "");
   const [hasStar, setHasStar] = useState(employee?.hasStar || false);
-  const [minWeeklyShifts, setMinWeeklyShifts] = useState(
-    employee?.minWeeklyShifts ?? 1
-  );
+  const [minWeeklyShifts, setMinWeeklyShifts] = useState(employee?.minWeeklyShifts ?? 1);
   const [maxWeeklyShifts, setMaxWeeklyShifts] = useState<number | "">(
     employee?.maxWeeklyShifts ?? ""
   );
@@ -28,6 +27,7 @@ export function EmployeeForm({ employee, stations, onSave, onCancel }: EmployeeF
   const [availableStations, setAvailableStations] = useState<number[]>(
     employee?.availableStations || []
   );
+  const [notes, setNotes] = useState(employee?.notes || "");
 
   const handleStationToggle = (stationId: number) => {
     setAvailableStations(prev =>
@@ -37,12 +37,14 @@ export function EmployeeForm({ employee, stations, onSave, onCancel }: EmployeeF
     );
   };
 
+  const maxError =
+    maxWeeklyShifts !== "" && maxWeeklyShifts < minWeeklyShifts
+      ? "המקסימום חייב להיות גדול או שווה למינימום"
+      : null;
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) return;
-
-    // Validate: max must be >= min if set
-    if (maxWeeklyShifts !== "" && maxWeeklyShifts < minWeeklyShifts) return;
+    if (!name.trim() || maxError) return;
 
     onSave({
       ...(employee?.id && { id: employee.id }),
@@ -52,13 +54,9 @@ export function EmployeeForm({ employee, stations, onSave, onCancel }: EmployeeF
       maxWeeklyShifts: maxWeeklyShifts === "" ? undefined : maxWeeklyShifts,
       availableStations: availableStations.sort((a, b) => a - b),
       canWorkMultipleStations,
+      notes: notes.trim() || undefined,
     });
   };
-
-  const maxError =
-    maxWeeklyShifts !== "" && maxWeeklyShifts < minWeeklyShifts
-      ? "המקסימום חייב להיות גדול או שווה למינימום"
-      : null;
 
   return (
     <Card className="p-6">
@@ -93,16 +91,14 @@ export function EmployeeForm({ employee, stations, onSave, onCancel }: EmployeeF
           <Checkbox
             id="canWorkMultiple"
             checked={canWorkMultipleStations}
-            onCheckedChange={checked =>
-              setCanWorkMultipleStations(checked as boolean)
-            }
+            onCheckedChange={checked => setCanWorkMultipleStations(checked as boolean)}
           />
           <Label htmlFor="canWorkMultiple" className="cursor-pointer">
             אפשר שיבוץ למספר עמדות ביום
           </Label>
         </div>
 
-        {/* Min / Max shifts — side by side */}
+        {/* Min / Max */}
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="minShifts">מינימום משמרות/שבוע</Label>
@@ -116,7 +112,6 @@ export function EmployeeForm({ employee, stations, onSave, onCancel }: EmployeeF
               required
             />
           </div>
-
           <div className="space-y-2">
             <Label htmlFor="maxShifts">
               מקסימום משמרות/שבוע{" "}
@@ -130,14 +125,10 @@ export function EmployeeForm({ employee, stations, onSave, onCancel }: EmployeeF
               value={maxWeeklyShifts}
               placeholder="ללא הגבלה"
               onChange={e =>
-                setMaxWeeklyShifts(
-                  e.target.value === "" ? "" : parseInt(e.target.value)
-                )
+                setMaxWeeklyShifts(e.target.value === "" ? "" : parseInt(e.target.value))
               }
             />
-            {maxError && (
-              <p className="text-xs text-red-500">{maxError}</p>
-            )}
+            {maxError && <p className="text-xs text-red-500">{maxError}</p>}
           </div>
         </div>
 
@@ -146,29 +137,37 @@ export function EmployeeForm({ employee, stations, onSave, onCancel }: EmployeeF
           <Label>עמדות זמינות</Label>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
             {stations.map(station => (
-              <div
-                key={station.id}
-                className="flex items-center space-x-2 space-x-reverse"
-              >
+              <div key={station.id} className="flex items-center space-x-2 space-x-reverse">
                 <Checkbox
                   id={`station-${station.id}`}
                   checked={availableStations.includes(station.id)}
                   onCheckedChange={() => handleStationToggle(station.id)}
                 />
-                <Label
-                  htmlFor={`station-${station.id}`}
-                  className="cursor-pointer"
-                >
+                <Label htmlFor={`station-${station.id}`} className="cursor-pointer">
                   {station.name}
                 </Label>
               </div>
             ))}
           </div>
           {stations.length === 0 && (
-            <p className="text-sm text-muted-foreground">
-              אין עמדות זמינות. הוסף עמדות קודם.
-            </p>
+            <p className="text-sm text-muted-foreground">אין עמדות זמינות. הוסף עמדות קודם.</p>
           )}
+        </div>
+
+        {/* Notes */}
+        <div className="space-y-2">
+          <Label htmlFor="notes">
+            הערות{" "}
+            <span className="text-xs text-muted-foreground">(אופציונלי)</span>
+          </Label>
+          <Textarea
+            id="notes"
+            value={notes}
+            onChange={e => setNotes(e.target.value)}
+            placeholder="הערות חופשיות לגבי העובד..."
+            rows={3}
+            className="resize-none"
+          />
         </div>
 
         {/* Buttons */}
