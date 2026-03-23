@@ -25,7 +25,7 @@ export function EmployeeForm({ employee, stations, onSave, onCancel }: EmployeeF
     employee?.canWorkMultipleStations ?? false
   );
   const [availableStations, setAvailableStations] = useState<number[]>(
-    employee?.availableStations || []
+    employee?.availableStations || stations.map(s => s.id)
   );
   const [notes, setNotes] = useState(employee?.notes || "");
 

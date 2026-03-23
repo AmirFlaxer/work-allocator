@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { WeeklySchedule, Station, Employee } from "@/types/employee";
+import { WeeklySchedule, Station, Employee, AuditEntry } from "@/types/employee";
 import { Card } from "@/components/ui/card";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
-import { Lock, LockOpen, Pencil, X, Eye } from "lucide-react";
+import { Lock, LockOpen, Pencil, X, Eye, History } from "lucide-react";
 import { calculateWorkloads } from "@/lib/scheduler";
 
 interface ScheduleTableProps {
@@ -18,7 +18,9 @@ interface ScheduleTableProps {
   employees: Employee[];
   weekStart: Date;
   lockedCells: Set<string>;
+  auditLog: { [cellKey: string]: AuditEntry[] };
   onCellEdit: (date: string, stationId: number, employeeName: string) => void;
+  onSwapCells: (date1: string, stationId1: number, date2: string, stationId2: number) => void;
   onToggleLock: (date: string, stationId: number) => void;
 }
 
@@ -29,10 +31,26 @@ function cellKey(date: string, stationId: number) {
 }
 
 function badgeStyle(shifts: number): string {
-  if (shifts === 0) return "bg-slate-100 text-slate-600";
-  if (shifts <= 2) return "bg-green-100 text-green-700 border-green-200";
-  if (shifts <= 3) return "bg-yellow-100 text-yellow-700 border-yellow-200";
-  return "bg-red-100 text-red-700 border-red-200";
+  if (shifts === 0) return "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300";
+  if (shifts <= 2) return "bg-gradient-to-l from-emerald-50 to-green-100 text-emerald-700 border-emerald-200 shadow-sm dark:from-emerald-900/40 dark:to-green-900/40 dark:text-emerald-300 dark:border-emerald-800";
+  if (shifts <= 3) return "bg-gradient-to-l from-amber-50 to-yellow-100 text-amber-700 border-amber-200 shadow-sm dark:from-amber-900/40 dark:to-yellow-900/40 dark:text-amber-300 dark:border-amber-800";
+  return "bg-gradient-to-l from-red-50 to-rose-100 text-red-700 border-red-200 shadow-sm dark:from-red-900/40 dark:to-rose-900/40 dark:text-red-300 dark:border-red-800";
+}
+
+const AVATAR_GRADIENTS = [
+  "from-blue-400 to-indigo-500",
+  "from-violet-400 to-purple-500",
+  "from-pink-400 to-rose-500",
+  "from-amber-400 to-orange-500",
+  "from-emerald-400 to-green-500",
+  "from-cyan-400 to-sky-500",
+  "from-teal-400 to-cyan-500",
+  "from-fuchsia-400 to-pink-500",
+];
+
+function nameColor(name: string): string {
+  const idx = name.split("").reduce((acc, c) => acc + c.charCodeAt(0), 0) % AVATAR_GRADIENTS.length;
+  return AVATAR_GRADIENTS[idx];
 }
 
 function getWeekDays(weekStart: Date): string[] {
@@ -45,7 +63,7 @@ function getWeekDays(weekStart: Date): string[] {
 
 export function ScheduleTable({
   schedule, stations, employees, weekStart,
-  lockedCells, onCellEdit, onToggleLock,
+  lockedCells, auditLog, onCellEdit, onSwapCells, onToggleLock,
 }: ScheduleTableProps) {
   const weekDays = getWeekDays(weekStart);
   const hebrewDaysReversed = HEBREW_DAYS;
@@ -56,6 +74,9 @@ export function ScheduleTable({
 
   // Employee detail dialog
   const [viewEmployee, setViewEmployee] = useState<string | null>(null);
+
+  // Audit log dialog
+  const [auditCell, setAuditCell] = useState<string | null>(null);
 
   // Drag state
   const dragSource = useRef<{ date: string; stationId: number; name: string } | null>(null);
@@ -88,10 +109,8 @@ export function ScheduleTable({
     if (lockedCells.has(cellKey(targetDate, targetStationId))) return;
     if (src.date === targetDate && src.stationId === targetStationId) return;
 
-    // Swap
-    const targetName = schedule[targetDate]?.[targetStationId] ?? "";
-    onCellEdit(targetDate, targetStationId, src.name);
-    onCellEdit(src.date, src.stationId, targetName);
+    // Swap atomically — no conflict check needed
+    onSwapCells(targetDate, targetStationId, src.date, src.stationId);
     dragSource.current = null;
     setDragOver(null);
   };
@@ -115,19 +134,21 @@ export function ScheduleTable({
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
-              <TableRow className="bg-primary/5">
+              <TableRow className="bg-gradient-to-l from-primary/8 to-violet-500/5 border-b-2 border-primary/10">
                 {weekDays.map((date, idx) => (
-                  <TableHead key={date} className="text-center font-bold min-w-[150px] py-3">
-                    <div className="text-sm">{hebrewDaysReversed[idx]}</div>
-                    <div className="text-xs font-normal text-muted-foreground">
+                  <TableHead key={date} className="text-center font-semibold min-w-[150px] py-3">
+                    <div className="text-sm font-bold text-foreground">{hebrewDaysReversed[idx]}</div>
+                    <div className="text-xs font-normal text-muted-foreground mt-0.5">
                       {new Date(date).toLocaleDateString("he-IL", { day: "2-digit", month: "2-digit" })}
                     </div>
-                    {emptyPerDay[idx] > 0 && (
-                      <div className="text-xs text-red-500 mt-0.5">⚠️ {emptyPerDay[idx]} חסרות</div>
+                    {emptyPerDay[idx] > 0 ? (
+                      <div className="text-xs text-orange-500 font-medium mt-0.5">⚠ {emptyPerDay[idx]} ריקות</div>
+                    ) : (
+                      <div className="text-xs text-emerald-500 font-medium mt-0.5">✓ מלא</div>
                     )}
                   </TableHead>
                 ))}
-                <TableHead className="font-bold text-right min-w-[120px]">עמדה</TableHead>
+                <TableHead className="font-bold text-right min-w-[120px] text-foreground">עמדה</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -156,18 +177,19 @@ export function ScheduleTable({
                                 draggable={!locked}
                                 onDragStart={() => handleDragStart(date, station.id, name)}
                                 onDragEnd={() => { dragSource.current = null; setDragOver(null); }}
-                                className={`font-medium text-xs px-2 py-1 border select-none
-                                  ${locked ? "ring-1 ring-orange-300 cursor-not-allowed" : "cursor-grab active:cursor-grabbing"}
+                                className={`font-medium text-xs px-2.5 py-1 rounded-full border select-none transition-all
+                                  ${locked ? "ring-2 ring-orange-300 dark:ring-orange-700 cursor-not-allowed" : "cursor-grab active:cursor-grabbing hover:scale-105"}
                                   ${badgeStyle(shifts)}
                                 `}
                                 title={`לחץ לעריכה${locked ? " (נעול)" : ""}`}
                                 onClick={() => !locked && handleCellClick(date, station.id)}
                               >
                                 {locked && <Lock className="h-2.5 w-2.5 ml-1 inline" />}
+                                <span className={`inline-block w-1.5 h-1.5 rounded-full bg-gradient-to-br ${nameColor(name)} ml-1.5`} />
                                 {name}
                               </Badge>
                               <button
-                                className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground"
+                                className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground"
                                 title={`פרטי ${name}`}
                                 onClick={() => setViewEmployee(name)}
                               >
@@ -175,12 +197,12 @@ export function ScheduleTable({
                               </button>
                             </div>
                           ) : (
-                            <span
-                              className="text-muted-foreground/60 text-xs cursor-pointer hover:text-primary px-2 py-1 rounded hover:bg-primary/5 transition-colors"
+                            <button
+                              className="opacity-0 group-hover:opacity-60 transition-all text-xs cursor-pointer text-primary border border-dashed border-primary/40 rounded-full px-2.5 py-0.5 hover:opacity-100 hover:bg-primary/5 hover:border-primary/60"
                               onClick={() => handleCellClick(date, station.id)}
                             >
                               + שבץ
-                            </span>
+                            </button>
                           )}
                           <button
                             className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded hover:bg-muted"
@@ -192,6 +214,15 @@ export function ScheduleTable({
                               : <LockOpen className="h-3 w-3 text-muted-foreground" />
                             }
                           </button>
+                          {(auditLog[key]?.length ?? 0) > 0 && (
+                            <button
+                              className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground"
+                              title="היסטוריית שינויים"
+                              onClick={() => setAuditCell(key)}
+                            >
+                              <History className="h-3 w-3" />
+                            </button>
+                          )}
                         </div>
                       </TableCell>
                     );
@@ -209,13 +240,13 @@ export function ScheduleTable({
         </div>
 
         {/* Legend */}
-        <div className="flex flex-wrap items-center gap-4 px-4 py-2 border-t bg-muted/20 text-xs text-muted-foreground">
-          <span className="font-medium">עומס:</span>
-          <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-green-200 inline-block" /> נמוך (1-2)</span>
-          <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-yellow-200 inline-block" /> בינוני (3)</span>
-          <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-red-200 inline-block" /> גבוה (4+)</span>
-          <span className="flex items-center gap-1 mr-2"><Lock className="h-3 w-3 text-orange-400" /> נעול</span>
-          <span className="mr-auto text-muted-foreground/60">לחץ לעריכה · גרור להחלפה · 👁 לפרטי עובד · 🔒 לנעילה</span>
+        <div className="flex flex-wrap items-center gap-3 px-4 py-2.5 border-t bg-gradient-to-l from-muted/30 to-transparent text-xs text-muted-foreground">
+          <span className="font-semibold text-foreground/60">עומס שבועי:</span>
+          <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-emerald-400 inline-block shadow-sm" /> 1-2</span>
+          <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-amber-400 inline-block shadow-sm" /> 3</span>
+          <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-red-400 inline-block shadow-sm" /> 4+</span>
+          <span className="flex items-center gap-1.5 mr-1"><Lock className="h-3 w-3 text-orange-400" /> נעול</span>
+          <span className="mr-auto opacity-50">לחץ · גרור להחלפה · 👁 פרטים · 🕐 היסטוריה · 🔒 נעילה</span>
         </div>
       </Card>
 
@@ -249,6 +280,33 @@ export function ScheduleTable({
                   </span>
                 )}
               </Button>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Audit log dialog */}
+      <Dialog open={!!auditCell} onOpenChange={open => !open && setAuditCell(null)}>
+        <DialogContent className="max-w-sm" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <History className="h-4 w-4" /> היסטוריית שינויים
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-1 max-h-72 overflow-y-auto">
+            {[...(auditLog[auditCell ?? ""] ?? [])].reverse().map((entry, i) => (
+              <div key={i} className="flex items-center gap-2 text-sm py-1.5 border-b last:border-0">
+                <span className="text-muted-foreground text-xs min-w-[90px]">
+                  {new Date(entry.timestamp).toLocaleString("he-IL", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
+                </span>
+                <span className={entry.from ? "line-through text-muted-foreground" : "text-muted-foreground italic"}>
+                  {entry.from || "ריק"}
+                </span>
+                <span className="text-muted-foreground">←</span>
+                <span className={entry.to ? "font-medium" : "text-muted-foreground italic"}>
+                  {entry.to || "ריק"}
+                </span>
+              </div>
             ))}
           </div>
         </DialogContent>

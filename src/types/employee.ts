@@ -30,6 +30,19 @@ export interface SavedSchedule {
   savedAt: string;
 }
 
+export interface AuditEntry {
+  from: string;
+  to: string;
+  timestamp: string;
+}
+
+export interface ScheduleTemplate {
+  id: string;
+  name: string;
+  schedule: WeeklySchedule;
+  savedAt: string;
+}
+
 export type TaskPriority = 'low' | 'normal' | 'urgent' | 'critical';
 export type TaskStatus = 'open' | 'in-progress' | 'done';
 

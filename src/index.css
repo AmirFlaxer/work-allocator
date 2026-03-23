@@ -1,84 +1,82 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
-
 @layer base {
   :root {
-    --background: 210 30% 98%;
-    --foreground: 215 25% 15%;
+    --background: 240 20% 98%;
+    --foreground: 240 15% 10%;
 
     --card: 0 0% 100%;
-    --card-foreground: 215 25% 15%;
+    --card-foreground: 240 15% 10%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 215 25% 15%;
+    --popover-foreground: 240 15% 10%;
 
-    --primary: 215 70% 45%;
+    --primary: 243 75% 59%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 25% 92%;
-    --secondary-foreground: 215 25% 15%;
+    --secondary: 240 15% 94%;
+    --secondary-foreground: 240 15% 20%;
 
-    --muted: 210 20% 94%;
-    --muted-foreground: 215 15% 50%;
+    --muted: 240 12% 95%;
+    --muted-foreground: 240 10% 52%;
 
-    --accent: 210 60% 88%;
-    --accent-foreground: 215 70% 35%;
+    --accent: 243 80% 95%;
+    --accent-foreground: 243 75% 45%;
 
-    --destructive: 0 75% 55%;
+    --destructive: 0 72% 55%;
     --destructive-foreground: 0 0% 100%;
 
-    --success: 145 65% 45%;
+    --success: 142 70% 42%;
     --success-foreground: 0 0% 100%;
 
-    --warning: 35 90% 55%;
+    --warning: 38 92% 52%;
     --warning-foreground: 0 0% 100%;
 
-    --border: 215 20% 88%;
-    --input: 215 20% 90%;
-    --ring: 215 70% 45%;
+    --border: 240 12% 89%;
+    --input: 240 12% 91%;
+    --ring: 243 75% 59%;
 
-    --radius: 0.5rem;
+    --radius: 0.625rem;
   }
 
   .dark {
-    --background: 215 30% 12%;
-    --foreground: 210 20% 95%;
+    --background: 240 20% 8%;
+    --foreground: 240 15% 95%;
 
-    --card: 215 28% 15%;
-    --card-foreground: 210 20% 95%;
+    --card: 240 18% 11%;
+    --card-foreground: 240 15% 95%;
 
-    --popover: 215 28% 15%;
-    --popover-foreground: 210 20% 95%;
+    --popover: 240 18% 11%;
+    --popover-foreground: 240 15% 95%;
 
-    --primary: 215 75% 60%;
-    --primary-foreground: 215 25% 15%;
+    --primary: 243 80% 68%;
+    --primary-foreground: 240 20% 8%;
 
-    --secondary: 215 25% 22%;
-    --secondary-foreground: 210 20% 95%;
+    --secondary: 240 15% 18%;
+    --secondary-foreground: 240 15% 90%;
 
-    --muted: 215 20% 20%;
-    --muted-foreground: 215 12% 65%;
+    --muted: 240 12% 16%;
+    --muted-foreground: 240 10% 58%;
 
-    --accent: 215 40% 30%;
-    --accent-foreground: 215 75% 70%;
+    --accent: 243 50% 22%;
+    --accent-foreground: 243 80% 78%;
 
-    --destructive: 0 70% 50%;
+    --destructive: 0 65% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    --success: 145 60% 50%;
+    --success: 142 65% 48%;
     --success-foreground: 0 0% 100%;
 
-    --warning: 35 85% 60%;
+    --warning: 38 88% 58%;
     --warning-foreground: 0 0% 100%;
 
-    --border: 215 20% 25%;
-    --input: 215 20% 22%;
-    --ring: 215 75% 60%;
+    --border: 240 12% 20%;
+    --input: 240 12% 18%;
+    --ring: 243 80% 68%;
   }
 }
 
@@ -90,10 +88,30 @@ All colors MUST be HSL.
   body {
     @apply bg-background text-foreground;
     direction: rtl;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    -webkit-font-smoothing: antialiased;
   }
 
   input, textarea, select {
     direction: rtl;
+  }
+}
+
+@layer utilities {
+  .gradient-text {
+    @apply bg-gradient-to-l from-violet-600 to-indigo-600 bg-clip-text text-transparent;
+  }
+
+  .dark .gradient-text {
+    @apply from-violet-400 to-indigo-400;
+  }
+
+  .glass {
+    @apply bg-white/80 backdrop-blur-md dark:bg-slate-900/80;
+  }
+
+  .card-hover {
+    @apply transition-all duration-200 hover:shadow-md hover:-translate-y-0.5;
   }
 }
