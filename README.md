@@ -1,73 +1,77 @@
-# Welcome to your Lovable project
+# מערכת שיבוץ עובדים
 
-## Project info
+פלטפורמה לניהול שיבוצי עובדים שבועיים — חכמה, מהירה ומאובטחת.
 
-**URL**: https://lovable.dev/projects/e163c94c-b13e-4534-8c3f-73b651dab2be
+**קישור לאפליקציה:** https://work-allocator.vercel.app
 
-## How can I edit this code?
+---
 
-There are several ways of editing your application.
+## מה האפליקציה עושה?
 
-**Use Lovable**
+מערכת שיבוץ עובדים מאפשרת למנהלים לנהל את לוח הזמנים השבועי של הצוות בצורה פשוטה ויעילה:
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/e163c94c-b13e-4534-8c3f-73b651dab2be) and start prompting.
+- **ניהול עובדים** — הוספה, עריכה והסרת עובדים עם הגדרת מינימום/מקסימום משמרות
+- **ניהול עמדות** — הגדרת עמדות עבודה וקישורן לעובדים מתאימים
+- **שיבוץ אוטומטי** — יצירת לוח שיבוץ שבועי אוטומטי תוך שמירה על כל האילוצים
+- **שיבוץ ידני** — עריכה ידנית של תאים, גרירה והחלפה בין עובדים
+- **העדפות שבועיות** — הגדרת זמינות וחסמים לכל עובד
+- **דוחות חודשיים** — סיכום משמרות לפי עובד ועמדה
+- **ייצוא** — שמירת לוח כ-PNG או Excel
+- **תבניות שבועיות** — שמירת לוח מוצלח לשימוש חוזר
+- **סנכרון ענן** — נתונים מסונכרנים בזמן אמת בין כל המכשירים
 
-Changes made via Lovable will be committed automatically to this repo.
+---
 
-**Use your preferred IDE**
+## איך מתחילים?
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+### 1. הרשמה
+- פתח את הכתובת https://work-allocator.vercel.app
+- לחץ על **"הרשמה"**
+- הכנס שם ארגון, שמך, אימייל וסיסמה
+- לחץ **"צור ארגון חדש"**
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+### 2. הוספת עמדות
+- עבור ללשונית **"עמדות"**
+- לחץ **"הוסף עמדה"** והכנס את שם העמדה
 
-Follow these steps:
+### 3. הוספת עובדים
+- עבור ללשונית **"עובדים"**
+- לחץ **"הוסף עובד"**
+- מלא שם, מינימום/מקסימום משמרות ועמדות זמינות
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+### 4. יצירת שיבוץ
+- עבור ללשונית **"שיבוץ"**
+- לחץ **"צור שיבוץ"** לשיבוץ אוטומטי
+- ערוך ידנית לפי הצורך
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+---
 
-# Step 3: Install the necessary dependencies.
-npm i
+## טכנולוגיות
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+| טכנולוגיה | שימוש |
+|-----------|-------|
+| React + TypeScript | ממשק משתמש |
+| Vite | בנייה ופיתוח |
+| Tailwind CSS + shadcn/ui | עיצוב |
+| Supabase | בסיס נתונים + אימות |
+| Vercel | פריסה לענן |
+
+---
+
+## פיתוח מקומי
+
+```bash
+git clone https://github.com/AmirFlaxer/work-allocator.git
+cd work-allocator
+npm install
 ```
 
-**Edit a file directly in GitHub**
+צור קובץ `.env.local`:
+```
+VITE_SUPABASE_URL=your-project-url
+VITE_SUPABASE_ANON_KEY=your-anon-key
+```
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
-
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/e163c94c-b13e-4534-8c3f-73b651dab2be) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+```bash
+npm run dev
+```
