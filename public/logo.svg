@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&amp;display=swap');
+      .bg  { fill: #0b1629; }
+      .rng { stroke: #2d4a6e; fill: none; }
+      .ltr { font-family: 'Playfair Display', Georgia, serif;
+             font-weight: 700; font-size: 52px;
+             fill: #dde3ef; text-anchor: middle; }
+      .g1  { stop-color: #fbbf24; }
+      .g2  { stop-color: #d97706; }
+      @media (prefers-color-scheme: light) {
+        .bg  { fill: #f8fafc; }
+        .rng { stroke: #94a3b8; }
+        .ltr { fill: #1e293b; }
+        .g1  { stop-color: #d97706; }
+        .g2  { stop-color: #92400e; }
+      }
+    </style>
+    <linearGradient id="gold" x1="20" y1="0" x2="80" y2="0" gradientUnits="userSpaceOnUse">
+      <stop class="g1" offset="0%"/>
+      <stop class="g2" offset="100%"/>
+    </linearGradient>
+  </defs>
+
+  <rect class="bg" width="100" height="100" rx="22"/>
+  <circle class="rng" cx="50" cy="50" r="41" stroke-width="1.8"/>
+  <text class="ltr" x="50" y="65">A</text>
+
+  <!-- Gold flanking rules — balanced on either side -->
+  <line x1="18" y1="74" x2="34" y2="74" stroke="url(#gold)" stroke-width="1.8" stroke-linecap="round"/>
+  <line x1="66" y1="74" x2="82" y2="74" stroke="url(#gold)" stroke-width="1.8" stroke-linecap="round"/>
+</svg>
