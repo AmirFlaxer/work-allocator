@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Users, Building2, Mail, Lock, User } from "lucide-react";
+import { Loader2, Building2, Mail, Lock, User } from "lucide-react";
 
 export function LoginPage() {
   const { signIn, signUp } = useAuth();
@@ -47,9 +47,7 @@ export function LoginPage() {
 
         {/* Logo & title */}
         <div className="text-center space-y-3">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center mx-auto shadow-lg shadow-indigo-200 dark:shadow-indigo-900/50">
-            <Users className="h-8 w-8 text-white" />
-          </div>
+          <img src="/logo.svg" alt="לוגו" className="w-16 h-16 rounded-2xl mx-auto shadow-lg shadow-teal-200 dark:shadow-teal-900/50" />
           <div>
             <h1 className="text-2xl font-bold bg-gradient-to-l from-violet-600 to-indigo-600 bg-clip-text text-transparent">
               מערכת שיבוץ עובדים

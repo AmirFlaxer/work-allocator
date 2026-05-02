@@ -1,34 +1,28 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
   <defs>
-    <style>
-      @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&amp;display=swap');
-      .bg  { fill: #0b1629; }
-      .rng { stroke: #2d4a6e; fill: none; }
-      .ltr { font-family: 'Playfair Display', Georgia, serif;
-             font-weight: 700; font-size: 52px;
-             fill: #dde3ef; text-anchor: middle; }
-      .g1  { stop-color: #fbbf24; }
-      .g2  { stop-color: #d97706; }
-      @media (prefers-color-scheme: light) {
-        .bg  { fill: #f8fafc; }
-        .rng { stroke: #94a3b8; }
-        .ltr { fill: #1e293b; }
-        .g1  { stop-color: #d97706; }
-        .g2  { stop-color: #92400e; }
-      }
-    </style>
-    <linearGradient id="gold" x1="20" y1="0" x2="80" y2="0" gradientUnits="userSpaceOnUse">
-      <stop class="g1" offset="0%"/>
-      <stop class="g2" offset="100%"/>
+    <linearGradient id="g" x1="0" y1="0" x2="100" y2="100" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#14b8a6"/>
+      <stop offset="100%" stop-color="#0f766e"/>
     </linearGradient>
   </defs>
-
-  <rect class="bg" width="100" height="100" rx="22"/>
-  <circle class="rng" cx="50" cy="50" r="41" stroke-width="1.8"/>
-  <text class="ltr" x="50" y="65">A</text>
-
-  <!-- Gold flanking rules — balanced on either side -->
-  <line x1="18" y1="74" x2="34" y2="74" stroke="url(#gold)" stroke-width="1.8" stroke-linecap="round"/>
-  <line x1="66" y1="74" x2="82" y2="74" stroke="url(#gold)" stroke-width="1.8" stroke-linecap="round"/>
+  <rect width="100" height="100" rx="22" fill="url(#g)"/>
+  <!-- header strip (days) -->
+  <rect x="12" y="13" width="76" height="13" rx="3.5" fill="rgba(255,255,255,0.4)"/>
+  <!-- row 1: filled · empty · filled -->
+  <rect x="12" y="31" width="22" height="13" rx="3" fill="rgba(255,255,255,0.85)"/>
+  <rect x="39" y="31" width="22" height="13" rx="3" fill="rgba(255,255,255,0.2)"/>
+  <rect x="66" y="31" width="22" height="13" rx="3" fill="rgba(255,255,255,0.85)"/>
+  <!-- row 2: empty · filled · filled -->
+  <rect x="12" y="49" width="22" height="13" rx="3" fill="rgba(255,255,255,0.2)"/>
+  <rect x="39" y="49" width="22" height="13" rx="3" fill="rgba(255,255,255,0.85)"/>
+  <rect x="66" y="49" width="22" height="13" rx="3" fill="rgba(255,255,255,0.85)"/>
+  <!-- row 3: filled · filled · empty -->
+  <rect x="12" y="67" width="22" height="13" rx="3" fill="rgba(255,255,255,0.85)"/>
+  <rect x="39" y="67" width="22" height="13" rx="3" fill="rgba(255,255,255,0.85)"/>
+  <rect x="66" y="67" width="22" height="13" rx="3" fill="rgba(255,255,255,0.2)"/>
+  <!-- row 4: hint -->
+  <rect x="12" y="85" width="22" height="5" rx="2" fill="rgba(255,255,255,0.15)"/>
+  <rect x="39" y="85" width="22" height="5" rx="2" fill="rgba(255,255,255,0.15)"/>
+  <rect x="66" y="85" width="22" height="5" rx="2" fill="rgba(255,255,255,0.15)"/>
 </svg>

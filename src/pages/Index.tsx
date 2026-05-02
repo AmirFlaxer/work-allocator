@@ -15,6 +15,7 @@ import { WeeklyPreferences } from "@/components/WeeklyPreferences";
 import { ScheduleTable } from "@/components/ScheduleTable";
 import { ScheduleChanges } from "@/components/ScheduleChanges";
 import { MonthlyReport } from "@/components/MonthlyReport";
+import { ContactDeveloper } from "@/components/ContactDeveloper";
 import { generateWeeklySchedule } from "@/lib/scheduler";
 import {
   Plus, Calendar, Users, MapPin, Save, FolderOpen, Trash2,
@@ -188,6 +189,7 @@ const Index = () => {
         LOCAL_KEYS.forEach(k => localStorage.removeItem(k));
         setEmployees([]); setStations([]); setSchedule(null);
         setSavedSchedules([]); setTemplates([]); setLockedCells(new Set()); setAuditLog({});
+        setWeekStart(getNextSunday(new Date()));
       } else {
         if (store.employees)      setEmployees(store.employees as Employee[]);
         if (store.stations)       setStations(store.stations as Station[]);
@@ -588,9 +590,7 @@ const Index = () => {
       <header className="sticky top-0 z-10 border-b border-border/60 glass shadow-sm">
         <div className="container mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-md shrink-0">
-              <Users className="h-5 w-5 text-white" />
-            </div>
+            <img src="/logo.svg" alt="לוגו" className="w-9 h-9 rounded-xl shadow-md shrink-0" />
             <div>
               <h1 className="text-base font-bold gradient-text leading-tight">מערכת שיבוץ עובדים</h1>
               <div className="flex items-center gap-1.5 mt-0.5">
@@ -622,6 +622,8 @@ const Index = () => {
             {!isSupabaseConfigured && <CloudOff className="h-4 w-4 text-muted-foreground/40" title="נתונים מקומיים בלבד" />}
 
             {/* Dark mode */}
+            <ContactDeveloper />
+
             <Button variant="ghost" size="icon" onClick={() => setDarkMode(d => !d)}
               title={darkMode ? "מצב בהיר" : "מצב כהה"} className="rounded-xl hover:bg-primary/10">
               {darkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}

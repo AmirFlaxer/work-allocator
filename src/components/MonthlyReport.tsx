@@ -204,6 +204,14 @@ export function MonthlyReport({ savedSchedules, stations }: MonthlyReportProps) 
 
   return (
     <div className="space-y-6" id="monthly-report-print">
+      {/* Print-only header with logo */}
+      <div className="print-header hidden">
+        <img src="/logo.svg" alt="לוגו" />
+        <div>
+          <strong>מערכת שיבוץ עובדים</strong>
+          <span>דוח {HEBREW_MONTHS[month]} {year}</span>
+        </div>
+      </div>
       <Tabs defaultValue="monthly">
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="monthly">דוח חודשי</TabsTrigger>
@@ -463,6 +471,18 @@ export function MonthlyReport({ savedSchedules, stations }: MonthlyReportProps) 
         @media print {
           .no-print { display: none !important; }
           body { direction: rtl; }
+          .print-header {
+            display: flex !important;
+            align-items: center;
+            gap: 12px;
+            padding-bottom: 14px;
+            margin-bottom: 18px;
+            border-bottom: 2px solid #0f766e;
+          }
+          .print-header img { width: 44px; height: 44px; border-radius: 10px; }
+          .print-header div { display: flex; flex-direction: column; gap: 2px; }
+          .print-header strong { font-size: 15px; font-weight: 700; color: #0f766e; }
+          .print-header span { font-size: 12px; color: #555; }
         }
       `}</style>
     </div>
