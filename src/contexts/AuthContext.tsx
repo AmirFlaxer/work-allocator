@@ -7,6 +7,8 @@ export interface Profile {
   org_id: string;
   role: string;
   full_name: string | null;
+  email: string | null;
+  created_at: string | null;
 }
 
 export interface Organization {
@@ -84,7 +86,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (orgError) return { error: orgError.message };
 
     const { error: profileError } = await supabase
-      .from("profiles").insert({ id: data.user.id, org_id: orgData.id, role: "admin", full_name: fullName });
+      .from("profiles").insert({ id: data.user.id, org_id: orgData.id, role: "admin", full_name: fullName, email });
     if (profileError) return { error: profileError.message };
 
     await loadProfile(data.user.id);

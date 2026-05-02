@@ -7,6 +7,7 @@ import { Loader2 } from "lucide-react";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { LoginPage } from "@/pages/LoginPage";
+import { RegistrantsPage } from "@/pages/RegistrantsPage";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 
@@ -33,6 +34,7 @@ function AppContent() {
   return (
     <Routes>
       <Route path="/" element={<Index />} />
+      <Route path="/admin" element={<RegistrantsPage />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
