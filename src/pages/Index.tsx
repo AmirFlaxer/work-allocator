@@ -156,10 +156,11 @@ const Index = () => {
     isSupabaseConfigured ? "syncing" : "idle"
   );
   const isRemoteUpdate = useRef(false);
+  const hasLoaded      = useRef(!isSupabaseConfigured);
 
   // ── Persist to localStorage + Supabase ─────────────────
   const syncToSupabase = useCallback((key: string, value: unknown) => {
-    if (!isSupabaseConfigured || isRemoteUpdate.current || !profile?.org_id) return;
+    if (!isSupabaseConfigured || isRemoteUpdate.current || !profile?.org_id || !hasLoaded.current) return;
     setSyncStatus("syncing");
     supabase!.from("app_store")
       .upsert({ key, org_id: profile.org_id, value, updated_at: new Date().toISOString() })
@@ -197,6 +198,7 @@ const Index = () => {
         if (store.lockedCells)    setLockedCells(new Set(store.lockedCells as string[]));
         if (store.auditLog)       setAuditLog(store.auditLog as { [k: string]: AuditEntry[] });
       }
+      hasLoaded.current = true;
       setTimeout(() => { isRemoteUpdate.current = false; setSyncStatus("synced"); }, 200);
     });
   }, [profile?.org_id]);
