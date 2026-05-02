@@ -194,7 +194,12 @@ const Index = () => {
         if (store.employees)      setEmployees(store.employees as Employee[]);
         if (store.stations)       setStations(store.stations as Station[]);
         if (store.schedule)       setSchedule(store.schedule as WeeklySchedule);
-        if (store.weekStart)      setWeekStart(new Date(store.weekStart as string));
+        if (store.weekStart) {
+          const ws = new Date(store.weekStart as string);
+          const weekEnd = new Date(ws);
+          weekEnd.setDate(weekEnd.getDate() + 6);
+          setWeekStart(weekEnd < new Date() ? getNextSunday(new Date()) : ws);
+        }
         if (store.savedSchedules) setSavedSchedules(store.savedSchedules as SavedSchedule[]);
         if (store.scheduleTemplates) setTemplates(store.scheduleTemplates as ScheduleTemplate[]);
         if (store.lockedCells)    setLockedCells(new Set(store.lockedCells as string[]));

@@ -52,8 +52,9 @@ export function ContactDeveloper() {
   return (
     <Dialog open={open} onOpenChange={handleOpen}>
       <DialogTrigger asChild>
-        <Button variant="ghost" size="icon" title="פנה למפתח" className="rounded-xl hover:bg-primary/10">
-          <MessageCircle className="h-5 w-5" />
+        <Button variant="outline" size="sm" title="פנה למפתח" className="rounded-xl gap-1.5">
+          <MessageCircle className="h-4 w-4" />
+          <span className="hidden sm:inline">פנה למפתח</span>
         </Button>
       </DialogTrigger>
 
