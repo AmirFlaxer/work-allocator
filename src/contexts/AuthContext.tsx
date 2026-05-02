@@ -81,12 +81,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (authError) return { error: authError.message };
     if (!data.user) return { error: "שגיאה ביצירת המשתמש" };
 
-    const { data: orgData, error: orgError } = await supabase
-      .from("organizations").insert({ name: orgName }).select().single();
+    const orgId = crypto.randomUUID();
+    const { error: orgError } = await supabase
+      .from("organizations").insert({ id: orgId, name: orgName });
     if (orgError) return { error: orgError.message };
 
     const { error: profileError } = await supabase
-      .from("profiles").insert({ id: data.user.id, org_id: orgData.id, role: "admin", full_name: fullName, email });
+      .from("profiles").insert({ id: data.user.id, org_id: orgId, role: "admin", full_name: fullName, email });
     if (profileError) return { error: profileError.message };
 
     await loadProfile(data.user.id);
