@@ -182,14 +182,21 @@ const Index = () => {
       if (error || !data) { setSyncStatus("error"); return; }
       isRemoteUpdate.current = true;
       const store = Object.fromEntries(data.map(r => [r.key, r.value]));
-      if (store.employees)      setEmployees(store.employees as Employee[]);
-      if (store.stations)       setStations(store.stations as Station[]);
-      if (store.schedule)       setSchedule(store.schedule as WeeklySchedule);
-      if (store.weekStart)      setWeekStart(new Date(store.weekStart as string));
-      if (store.savedSchedules) setSavedSchedules(store.savedSchedules as SavedSchedule[]);
-      if (store.scheduleTemplates) setTemplates(store.scheduleTemplates as ScheduleTemplate[]);
-      if (store.lockedCells)    setLockedCells(new Set(store.lockedCells as string[]));
-      if (store.auditLog)       setAuditLog(store.auditLog as { [k: string]: AuditEntry[] });
+      const LOCAL_KEYS = ["employees","stations","schedule","weekStart","savedSchedules","scheduleTemplates","lockedCells","auditLog"];
+      if (data.length === 0) {
+        LOCAL_KEYS.forEach(k => localStorage.removeItem(k));
+        setEmployees([]); setStations([]); setSchedule(null);
+        setSavedSchedules([]); setTemplates([]); setLockedCells(new Set()); setAuditLog({});
+      } else {
+        if (store.employees)      setEmployees(store.employees as Employee[]);
+        if (store.stations)       setStations(store.stations as Station[]);
+        if (store.schedule)       setSchedule(store.schedule as WeeklySchedule);
+        if (store.weekStart)      setWeekStart(new Date(store.weekStart as string));
+        if (store.savedSchedules) setSavedSchedules(store.savedSchedules as SavedSchedule[]);
+        if (store.scheduleTemplates) setTemplates(store.scheduleTemplates as ScheduleTemplate[]);
+        if (store.lockedCells)    setLockedCells(new Set(store.lockedCells as string[]));
+        if (store.auditLog)       setAuditLog(store.auditLog as { [k: string]: AuditEntry[] });
+      }
       setTimeout(() => { isRemoteUpdate.current = false; setSyncStatus("synced"); }, 200);
     });
   }, [profile?.org_id]);
