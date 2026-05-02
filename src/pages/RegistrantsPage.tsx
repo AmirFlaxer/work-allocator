@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -16,10 +15,7 @@ interface Registrant {
   organizations: { name: string } | null;
 }
 
-const OWNER_EMAIL = "benqueman@gmail.com";
-
 export function RegistrantsPage() {
-  const { user } = useAuth();
   const navigate = useNavigate();
   const [registrants, setRegistrants] = useState<Registrant[]>([]);
   const [loading, setLoading]         = useState(true);
@@ -38,14 +34,6 @@ export function RegistrantsPage() {
         setLoading(false);
       });
   }, []);
-
-  if (user?.email !== OWNER_EMAIL) {
-    return (
-      <div className="min-h-screen flex items-center justify-center" dir="rtl">
-        <p className="text-muted-foreground">אין גישה לעמוד זה.</p>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-background p-6" dir="rtl">
