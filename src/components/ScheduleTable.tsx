@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Lock, LockOpen, Pencil, X, Eye, History } from "lucide-react";
 import { calculateWorkloads } from "@/lib/scheduler";
+import { getEmployeeColor } from "@/lib/employeeColors";
 
 interface ScheduleTableProps {
   schedule: WeeklySchedule;
@@ -22,6 +23,8 @@ interface ScheduleTableProps {
   onCellEdit: (date: string, stationId: number, employeeName: string) => void;
   onSwapCells: (date1: string, stationId1: number, date2: string, stationId2: number) => void;
   onToggleLock: (date: string, stationId: number) => void;
+  cellColors?: boolean;
+  darkMode?: boolean;
 }
 
 const HEBREW_DAYS = ["ראשון", "שני", "שלישי", "רביעי", "חמישי"];
@@ -64,6 +67,8 @@ function getWeekDays(weekStart: Date): string[] {
 export function ScheduleTable({
   schedule, stations, employees, weekStart,
   lockedCells, auditLog, onCellEdit, onSwapCells, onToggleLock,
+  cellColors = true,
+  darkMode = false,
 }: ScheduleTableProps) {
   const weekDays = getWeekDays(weekStart);
   const hebrewDaysReversed = HEBREW_DAYS;
@@ -130,13 +135,17 @@ export function ScheduleTable({
 
   return (
     <>
-      <Card className="overflow-hidden shadow-sm">
+      <div className="rounded-2xl border border-border overflow-hidden bg-card">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
-              <TableRow className="bg-gradient-to-l from-primary/8 to-violet-500/5 border-b-2 border-primary/10">
+              <TableRow className="bg-card border-b-2 border-border">
                 {weekDays.map((date, idx) => (
-                  <TableHead key={date} className="text-center font-semibold min-w-[150px] py-3">
+                  <TableHead
+                    key={date}
+                    className="text-center font-semibold min-w-[150px] py-3"
+                    style={{ borderBottomColor: 'hsl(var(--border))' }}
+                  >
                     <div className="text-sm font-bold text-foreground">{hebrewDaysReversed[idx]}</div>
                     <div className="text-xs font-normal text-muted-foreground mt-0.5">
                       {new Date(date).toLocaleDateString("he-IL", { day: "2-digit", month: "2-digit" })}
@@ -148,18 +157,23 @@ export function ScheduleTable({
                     )}
                   </TableHead>
                 ))}
-                <TableHead className="font-bold text-right min-w-[120px] text-foreground">עמדה</TableHead>
+                <TableHead className="font-bold text-right min-w-[120px] text-foreground border-r border-border">עמדה</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {stations.map(station => (
-                <TableRow key={station.id} className="hover:bg-muted/30 transition-colors">
+                <TableRow key={station.id} className="border-b border-border hover:bg-muted/30 transition-colors">
                   {weekDays.map(date => {
                     const name = schedule[date]?.[station.id] ?? "";
                     const shifts = workloads[name] ?? 0;
                     const key = cellKey(date, station.id);
                     const locked = lockedCells.has(key);
                     const isDragOver = dragOver === key;
+
+                    const empColor = name ? getEmployeeColor(name, darkMode) : null;
+                    const chipStyle = (cellColors && empColor)
+                      ? { background: empColor.bg, color: empColor.text, borderRight: `3px solid ${empColor.accent}` }
+                      : undefined;
 
                     return (
                       <TableCell
@@ -177,15 +191,18 @@ export function ScheduleTable({
                                 draggable={!locked}
                                 onDragStart={() => handleDragStart(date, station.id, name)}
                                 onDragEnd={() => { dragSource.current = null; setDragOver(null); }}
-                                className={`font-medium text-xs px-2.5 py-1 rounded-full border select-none transition-all
+                                className={`font-medium text-xs px-2.5 py-1 rounded-md border select-none transition-all
                                   ${locked ? "ring-2 ring-orange-300 dark:ring-orange-700 cursor-not-allowed" : "cursor-grab active:cursor-grabbing hover:scale-105"}
-                                  ${badgeStyle(shifts)}
+                                  ${cellColors && empColor ? "" : badgeStyle(shifts)}
                                 `}
+                                style={chipStyle}
                                 title={`לחץ לעריכה${locked ? " (נעול)" : ""}`}
                                 onClick={() => !locked && handleCellClick(date, station.id)}
                               >
                                 {locked && <Lock className="h-2.5 w-2.5 ml-1 inline" />}
-                                <span className={`inline-block w-1.5 h-1.5 rounded-full bg-gradient-to-br ${nameColor(name)} ml-1.5`} />
+                                {!(cellColors && empColor) && (
+                                  <span className={`inline-block w-1.5 h-1.5 rounded-full bg-gradient-to-br ${nameColor(name)} ml-1.5`} />
+                                )}
                                 {name}
                               </Badge>
                               <button
@@ -227,9 +244,9 @@ export function ScheduleTable({
                       </TableCell>
                     );
                   })}
-                  <TableCell className="font-medium text-right py-3">
+                  <TableCell className="font-medium text-right py-3 border-r border-border">
                     <div className="flex items-center justify-end gap-2">
-                      <span className="text-sm">{station.name}</span>
+                      <span className="text-sm font-bold">{station.name}</span>
                       <Badge variant="outline" className="text-xs">{station.id}</Badge>
                     </div>
                   </TableCell>
@@ -240,15 +257,19 @@ export function ScheduleTable({
         </div>
 
         {/* Legend */}
-        <div className="flex flex-wrap items-center gap-3 px-4 py-2.5 border-t bg-gradient-to-l from-muted/30 to-transparent text-xs text-muted-foreground">
-          <span className="font-semibold text-foreground/60">עומס שבועי:</span>
-          <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-emerald-400 inline-block shadow-sm" /> 1-2</span>
-          <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-amber-400 inline-block shadow-sm" /> 3</span>
-          <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-red-400 inline-block shadow-sm" /> 4+</span>
+        <div className="flex flex-wrap items-center gap-3 px-4 py-2.5 border-t border-border bg-card text-xs text-muted-foreground">
+          {!cellColors && (
+            <>
+              <span className="font-semibold text-foreground/60">עומס שבועי:</span>
+              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-emerald-400 inline-block shadow-sm" /> 1-2</span>
+              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-amber-400 inline-block shadow-sm" /> 3</span>
+              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-red-400 inline-block shadow-sm" /> 4+</span>
+            </>
+          )}
           <span className="flex items-center gap-1.5 mr-1"><Lock className="h-3 w-3 text-orange-400" /> נעול</span>
-          <span className="mr-auto opacity-50">לחץ · גרור להחלפה · 👁 פרטים · 🕐 היסטוריה · 🔒 נעילה</span>
+          <span className="mr-auto opacity-50">לחץ - גרור להחלפה - 👁 פרטים - 🕐 היסטוריה - 🔒 נעילה</span>
         </div>
-      </Card>
+      </div>
 
       {/* Edit dialog */}
       <Dialog open={!!editCell} onOpenChange={open => !open && setEditCell(null)}>

@@ -924,7 +924,11 @@ const Index = () => {
                   </div>
                 )}
 
-                <div className="flex gap-2 justify-end">
+                <div className="flex flex-wrap items-center gap-3 justify-end">
+                  <div className="flex items-center gap-2">
+                    <Switch id="cell-colors" checked={cellColors} onCheckedChange={setCellColors} />
+                    <Label htmlFor="cell-colors" className="text-sm cursor-pointer text-muted-foreground">צבע לעובד</Label>
+                  </div>
                   <Button variant="outline" size="sm" onClick={handleExportToImage}>
                     <Image className="h-4 w-4 ml-1" /> PNG
                   </Button>
@@ -944,6 +948,8 @@ const Index = () => {
                     onCellEdit={handleCellEdit}
                     onSwapCells={handleSwapCells}
                     onToggleLock={handleToggleLock}
+                    cellColors={cellColors}
+                    darkMode={darkMode}
                   />
                 </div>
 
