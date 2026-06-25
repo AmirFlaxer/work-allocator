@@ -90,8 +90,8 @@ export function Dashboard({ employees, stations, schedule }: DashboardProps) {
       label: "עמדות",
       value: stations.length,
       sub: `${stations.length * 5} משבצות/שבוע`,
-      icon: <MapPin className="h-4 w-4 text-purple-600" />,
-      bg: "bg-purple-50",
+      icon: <MapPin className="h-4 w-4 text-primary" />,
+      bg: "bg-primary/10",
     },
     {
       label: "מאויישות",

@@ -3,6 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Star, Pencil, Trash2, Layers } from "lucide-react";
+import { getEmployeeColor } from "@/lib/employeeColors";
 
 interface EmployeeListProps {
   employees: Employee[];
@@ -20,24 +21,8 @@ function getShiftCount(name: string, schedule?: WeeklySchedule | null): number {
   );
 }
 
-const AVATAR_GRADIENTS = [
-  "from-blue-400 to-indigo-500",
-  "from-violet-400 to-purple-500",
-  "from-pink-400 to-rose-500",
-  "from-amber-400 to-orange-500",
-  "from-emerald-400 to-green-500",
-  "from-cyan-400 to-sky-500",
-  "from-teal-400 to-cyan-500",
-  "from-fuchsia-400 to-pink-500",
-];
-
 function getInitials(name: string): string {
   return name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase();
-}
-
-function avatarGradient(name: string): string {
-  const idx = name.split("").reduce((acc, c) => acc + c.charCodeAt(0), 0) % AVATAR_GRADIENTS.length;
-  return AVATAR_GRADIENTS[idx];
 }
 
 function shiftStatus(shifts: number, min: number, max?: number): { label: string; classes: string; barColor: string } {
@@ -64,8 +49,8 @@ export function EmployeeList({
   if (employees.length === 0) {
     return (
       <Card className="p-10 text-center border-dashed border-2 border-primary/20 bg-gradient-to-b from-primary/5 to-transparent">
-        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center mx-auto mb-3">
-          <span className="text-white text-xl">?</span>
+        <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mx-auto mb-3">
+          <span className="text-primary text-xl">?</span>
         </div>
         <p className="text-muted-foreground font-medium">לא נמצאו עובדים</p>
         <p className="text-muted-foreground text-sm mt-1">הוסף עובד חדש להתחלה</p>
@@ -98,14 +83,17 @@ export function EmployeeList({
                 : "hover:border-primary/30"
             }`}
           >
-            {/* Top gradient accent */}
-            <div className={`h-1 w-full bg-gradient-to-l ${avatarGradient(employee.name)}`} />
+            {/* Top accent bar */}
+            <div className="h-1 w-full" style={{ background: getEmployeeColor(employee.name).accent }} />
 
             <div className="p-4">
               {/* Header row */}
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center gap-2.5 min-w-0">
-                  <div className={`w-9 h-9 rounded-xl bg-gradient-to-br ${avatarGradient(employee.name)} flex items-center justify-center text-white text-xs font-bold shadow-sm shrink-0`}>
+                  <div
+                    className="w-9 h-9 rounded-xl flex items-center justify-center text-xs font-bold shadow-sm shrink-0"
+                    style={{ background: getEmployeeColor(employee.name).bg, color: getEmployeeColor(employee.name).text }}
+                  >
                     {getInitials(employee.name)}
                   </div>
                   <div className="min-w-0">

@@ -40,21 +40,6 @@ function badgeStyle(shifts: number): string {
   return "bg-gradient-to-l from-red-50 to-rose-100 text-red-700 border-red-200 shadow-sm dark:from-red-900/40 dark:to-rose-900/40 dark:text-red-300 dark:border-red-800";
 }
 
-const AVATAR_GRADIENTS = [
-  "from-blue-400 to-indigo-500",
-  "from-violet-400 to-purple-500",
-  "from-pink-400 to-rose-500",
-  "from-amber-400 to-orange-500",
-  "from-emerald-400 to-green-500",
-  "from-cyan-400 to-sky-500",
-  "from-teal-400 to-cyan-500",
-  "from-fuchsia-400 to-pink-500",
-];
-
-function nameColor(name: string): string {
-  const idx = name.split("").reduce((acc, c) => acc + c.charCodeAt(0), 0) % AVATAR_GRADIENTS.length;
-  return AVATAR_GRADIENTS[idx];
-}
 
 function getWeekDays(weekStart: Date): string[] {
   return Array.from({ length: 5 }, (_, i) => {
@@ -201,7 +186,7 @@ export function ScheduleTable({
                               >
                                 {locked && <Lock className="h-2.5 w-2.5 ml-1 inline" />}
                                 {!(cellColors && empColor) && (
-                                  <span className={`inline-block w-1.5 h-1.5 rounded-full bg-gradient-to-br ${nameColor(name)} ml-1.5`} />
+                                  <span className="inline-block w-1.5 h-1.5 rounded-full ml-1.5" style={{ background: getEmployeeColor(name).accent }} />
                                 )}
                                 {name}
                               </Badge>
