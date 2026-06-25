@@ -64,6 +64,12 @@ const Index = () => {
     localStorage.setItem("darkMode", String(darkMode));
   }, [darkMode]);
 
+  // ── Cell colors preference ──────────────────────────────
+  const [cellColors, setCellColors] = useState<boolean>(() => {
+    const saved = localStorage.getItem("cellColors");
+    return saved === null ? true : saved === "true";
+  });
+
   // ── Employees ──────────────────────────────────────────
   const [employees, setEmployees] = useState<Employee[]>(() => {
     try { return JSON.parse(localStorage.getItem("employees") || "[]"); } catch { return []; }
@@ -176,6 +182,7 @@ const Index = () => {
   useEffect(() => { localStorage.setItem("lockedCells", JSON.stringify(Array.from(lockedCells))); syncToSupabase("lockedCells", Array.from(lockedCells)); }, [lockedCells, syncToSupabase]);
   useEffect(() => { localStorage.setItem("auditLog", JSON.stringify(auditLog)); syncToSupabase("auditLog", auditLog); }, [auditLog, syncToSupabase]);
   useEffect(() => { localStorage.setItem("scheduleTemplates", JSON.stringify(templates)); syncToSupabase("scheduleTemplates", templates); }, [templates, syncToSupabase]);
+  useEffect(() => { localStorage.setItem("cellColors", String(cellColors)); syncToSupabase("cellColors", cellColors); }, [cellColors, syncToSupabase]);
 
   // ── Load from Supabase on mount ────────────────────────
   useEffect(() => {
@@ -184,7 +191,7 @@ const Index = () => {
       if (error || !data) { setSyncStatus("error"); return; }
       isRemoteUpdate.current = true;
       const store = Object.fromEntries(data.map(r => [r.key, r.value]));
-      const LOCAL_KEYS = ["employees","stations","schedule","weekStart","savedSchedules","scheduleTemplates","lockedCells","auditLog"];
+      const LOCAL_KEYS = ["employees","stations","schedule","weekStart","savedSchedules","scheduleTemplates","lockedCells","auditLog","cellColors"];
       if (data.length === 0) {
         LOCAL_KEYS.forEach(k => localStorage.removeItem(k));
         setEmployees([]); setStations([]); setSchedule(null);
@@ -204,6 +211,7 @@ const Index = () => {
         if (store.scheduleTemplates) setTemplates(store.scheduleTemplates as ScheduleTemplate[]);
         if (store.lockedCells)    setLockedCells(new Set(store.lockedCells as string[]));
         if (store.auditLog)       setAuditLog(store.auditLog as { [k: string]: AuditEntry[] });
+        if (store.cellColors !== undefined) setCellColors(store.cellColors as boolean);
       }
       hasLoaded.current = true;
       setTimeout(() => { isRemoteUpdate.current = false; setSyncStatus("synced"); }, 200);
@@ -229,6 +237,7 @@ const Index = () => {
         else if (key === "scheduleTemplates") setTemplates(value as ScheduleTemplate[]);
         else if (key === "lockedCells")  setLockedCells(new Set(value as string[]));
         else if (key === "auditLog")     setAuditLog(value as { [k: string]: AuditEntry[] });
+        else if (key === "cellColors") setCellColors(value as boolean);
         setTimeout(() => { isRemoteUpdate.current = false; setSyncStatus("synced"); }, 200);
         toast({ title: "השיבוץ עודכן ממכשיר אחר" });
       })
