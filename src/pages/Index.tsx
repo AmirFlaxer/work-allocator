@@ -776,7 +776,7 @@ const Index = () => {
                 <div className="flex items-center gap-2.5 mb-1.5">
                   <span className="w-6 h-0.5 bg-primary" />
                   <span className="text-[11px] tracking-[0.2em] uppercase font-bold text-primary">
-                    מהדורה שבועית - גיליון {getWeekNumber(weekStart)}
+                    מהדורה שבועית · גיליון {getWeekNumber(weekStart)}
                   </span>
                 </div>
                 <h1 className="masthead-title text-4xl sm:text-5xl text-foreground">שיבוץ שבועי</h1>
