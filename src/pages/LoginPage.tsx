@@ -63,7 +63,7 @@ export function LoginPage() {
           <span className="w-6 h-0.5 bg-primary" />
           <span className="text-[11px] tracking-[0.2em] uppercase font-bold text-primary">מערכת שיבוץ עובדים</span>
         </div>
-        <h1 className="text-5xl lg:text-6xl font-bold text-foreground mb-4">שיבוץ<br />שבועי חכם</h1>
+        <h1 className="text-5xl lg:text-6xl masthead-title text-foreground mb-4">שיבוץ<br />שבועי חכם</h1>
         <p className="text-muted-foreground text-lg max-w-sm">פלטפורמה לניהול שיבוצים - כל ארגון מקבל סביבת נתונים מבודדת ומאובטחת.</p>
         <img src="/logo.svg" alt="" aria-hidden="true" className="w-12 h-12 rounded-xl mt-8" />
       </div>
