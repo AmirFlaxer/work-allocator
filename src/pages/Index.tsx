@@ -44,6 +44,24 @@ function getWeekDays(weekStart: Date): string[] {
   });
 }
 
+function getWeekNumber(date: Date): number {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const dayNum = (d.getUTCDay() + 6) % 7;
+  d.setUTCDate(d.getUTCDate() - dayNum + 3);
+  const firstThursday = new Date(Date.UTC(d.getUTCFullYear(), 0, 4));
+  const firstDayNum = (firstThursday.getUTCDay() + 6) % 7;
+  firstThursday.setUTCDate(firstThursday.getUTCDate() - firstDayNum + 3);
+  return 1 + Math.round((d.getTime() - firstThursday.getTime()) / (7 * 24 * 3600 * 1000));
+}
+
+function formatWeekRange(weekStart: Date): string {
+  const end = new Date(weekStart);
+  end.setDate(end.getDate() + 4);
+  const s = weekStart.toLocaleDateString("he-IL", { weekday: "long", day: "2-digit", month: "long" });
+  const e = end.toLocaleDateString("he-IL", { weekday: "long", day: "2-digit", month: "long", year: "numeric" });
+  return `${s} · ${e}`;
+}
+
 function cellKey(date: string, stationId: number) {
   return `${date}__${stationId}`;
 }
@@ -601,27 +619,21 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background" dir="rtl">
       {/* ── Header ── */}
-      <header className="sticky top-0 z-10 border-b border-border/60 glass shadow-sm">
+      <header className="sticky top-0 z-10 border-b border-border glass">
         <div className="container mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <img src="/logo.svg" alt="לוגו" className="w-9 h-9 rounded-xl shadow-md shrink-0" />
+            <img src="/logo.svg" alt="לוגו" className="w-8 h-8 rounded-lg shrink-0" />
             <div>
-              <h1 className="text-base font-bold gradient-text leading-tight">מערכת שיבוץ עובדים</h1>
-              <div className="flex items-center gap-1.5 mt-0.5">
-                <span className="text-xs px-1.5 py-0.5 rounded-md bg-primary/10 text-primary font-medium">{employees.length} עובדים</span>
-                <span className="text-xs px-1.5 py-0.5 rounded-md bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300 font-medium">{stations.length} עמדות</span>
-                {savedSchedules.length > 0 && (
-                  <span className="text-xs px-1.5 py-0.5 rounded-md bg-muted text-muted-foreground font-medium">{savedSchedules.length} שמורים</span>
-                )}
-              </div>
+              <span className="text-lg font-extrabold text-foreground leading-tight">שיבוץ</span>
+              <p className="text-xs text-muted-foreground">ניהול שיבוצים חכם</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {/* Org info */}
+            {/* Org chip */}
             {isSupabaseConfigured && org && (
-              <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-primary/8 border border-primary/20">
-                <Building2 className="h-3.5 w-3.5 text-primary" />
-                <span className="text-xs font-semibold text-primary">{org.name}</span>
+              <div className="hidden sm:flex items-center gap-1.5 rounded-full border border-border px-3 py-1">
+                <span className="w-2 h-2 rounded-full bg-success shrink-0" />
+                <span className="text-xs font-medium text-foreground">{org.name}</span>
               </div>
             )}
 
@@ -635,7 +647,6 @@ const Index = () => {
             )}
             {!isSupabaseConfigured && <CloudOff className="h-4 w-4 text-muted-foreground/40" title="נתונים מקומיים בלבד" />}
 
-            {/* Dark mode */}
             <ContactDeveloper />
 
             <Button variant="ghost" size="icon" onClick={() => setDarkMode(d => !d)}
@@ -656,31 +667,31 @@ const Index = () => {
 
       <main className="container mx-auto px-4 py-6">
         <Tabs defaultValue="schedule" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5 bg-muted/60 rounded-xl p-1 h-auto">
-            <TabsTrigger value="stations" className="rounded-lg gap-1.5 py-2 text-xs sm:text-sm font-medium data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-primary dark:data-[state=active]:bg-slate-800 transition-all">
-              <MapPin className="h-3.5 w-3.5" /><span className="hidden sm:inline">עמדות</span>
+          <TabsList className="h-auto bg-transparent p-0 gap-7 justify-start rounded-none border-b border-border">
+            <TabsTrigger value="stations" className="bg-transparent rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-foreground text-muted-foreground gap-2 px-0 py-2.5 text-sm font-medium transition-all">
+              <span className="index-num">01</span> עמדות
             </TabsTrigger>
-            <TabsTrigger value="employees" className="rounded-lg gap-1.5 py-2 text-xs sm:text-sm font-medium data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-primary dark:data-[state=active]:bg-slate-800 transition-all">
-              <Users className="h-3.5 w-3.5" /><span className="hidden sm:inline">עובדים</span>
+            <TabsTrigger value="employees" className="bg-transparent rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-foreground text-muted-foreground gap-2 px-0 py-2.5 text-sm font-medium transition-all">
+              <span className="index-num">02</span> עובדים
             </TabsTrigger>
-            <TabsTrigger value="preferences" className="rounded-lg gap-1.5 py-2 text-xs sm:text-sm font-medium data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-primary dark:data-[state=active]:bg-slate-800 transition-all">
-              <Calendar className="h-3.5 w-3.5" /><span className="hidden sm:inline">העדפות</span>
+            <TabsTrigger value="preferences" className="bg-transparent rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-foreground text-muted-foreground gap-2 px-0 py-2.5 text-sm font-medium transition-all">
+              <span className="index-num">03</span> העדפות
             </TabsTrigger>
-            <TabsTrigger value="schedule" className="rounded-lg gap-1.5 py-2 text-xs sm:text-sm font-medium data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-primary dark:data-[state=active]:bg-slate-800 transition-all">
-              <Calendar className="h-3.5 w-3.5" /><span className="hidden sm:inline">שיבוץ</span>
+            <TabsTrigger value="schedule" className="bg-transparent rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-foreground text-muted-foreground gap-2 px-0 py-2.5 text-sm font-medium transition-all">
+              <span className="index-num">04</span> שיבוץ
             </TabsTrigger>
-            <TabsTrigger value="reports" className="rounded-lg gap-1.5 py-2 text-xs sm:text-sm font-medium data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-primary dark:data-[state=active]:bg-slate-800 transition-all">
-              <BarChart2 className="h-3.5 w-3.5" /><span className="hidden sm:inline">דוחות</span>
+            <TabsTrigger value="reports" className="bg-transparent rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-foreground text-muted-foreground gap-2 px-0 py-2.5 text-sm font-medium transition-all">
+              <span className="index-num">05</span> דוחות
             </TabsTrigger>
           </TabsList>
 
           {/* ── Stations ── */}
           <TabsContent value="stations" className="space-y-6">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center">
-                <MapPin className="h-4 w-4 text-white" />
+              <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+                <MapPin className="h-4 w-4" />
               </div>
-              <h2 className="text-xl font-bold">ניהול עמדות</h2>
+              <h2 className="text-xl font-extrabold">ניהול עמדות</h2>
             </div>
             <StationManager stations={stations} onAdd={handleAddStation} onEdit={handleEditStation} onDelete={handleDeleteStation} />
           </TabsContent>
@@ -689,10 +700,10 @@ const Index = () => {
           <TabsContent value="employees" className="space-y-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center">
-                  <Users className="h-4 w-4 text-white" />
+                <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+                  <Users className="h-4 w-4" />
                 </div>
-                <h2 className="text-xl font-bold">ניהול עובדים</h2>
+                <h2 className="text-xl font-extrabold">ניהול עובדים</h2>
               </div>
               {!showEmployeeForm && (
                 <div className="flex gap-2">
@@ -744,10 +755,10 @@ const Index = () => {
           {/* ── Preferences ── */}
           <TabsContent value="preferences" className="space-y-6">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center">
-                <Calendar className="h-4 w-4 text-white" />
+              <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+                <Calendar className="h-4 w-4" />
               </div>
-              <h2 className="text-xl font-bold">העדפות שבועיות</h2>
+              <h2 className="text-xl font-extrabold">העדפות שבועיות</h2>
             </div>
             <WeeklyPreferences
               employees={employees}
@@ -759,14 +770,29 @@ const Index = () => {
 
           {/* ── Schedule ── */}
           <TabsContent value="schedule" className="space-y-4">
-            {/* Top bar */}
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center">
-                  <Calendar className="h-4 w-4 text-white" />
+            {/* Masthead */}
+            <div className="flex items-end justify-between gap-6 flex-wrap pt-2">
+              <div>
+                <div className="flex items-center gap-2.5 mb-1.5">
+                  <span className="w-6 h-0.5 bg-primary" />
+                  <span className="text-[11px] tracking-[0.2em] uppercase font-bold text-primary">
+                    מהדורה שבועית - גיליון {getWeekNumber(weekStart)}
+                  </span>
                 </div>
-                <h2 className="text-xl font-bold">שיבוץ שבועי</h2>
+                <h1 className="masthead-title text-4xl sm:text-5xl text-foreground">שיבוץ שבועי</h1>
+                <p className="text-muted-foreground mt-2 font-medium">
+                  {formatWeekRange(weekStart)}
+                </p>
+                <div className="flex items-center gap-1.5 mt-2">
+                  <span className="text-xs px-1.5 py-0.5 rounded-md bg-primary/10 text-primary font-medium">{employees.length} עובדים</span>
+                  <span className="text-xs px-1.5 py-0.5 rounded-md bg-muted text-muted-foreground font-medium">{stations.length} עמדות</span>
+                </div>
               </div>
+            </div>
+
+            {/* Action buttons */}
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div />
               <div className="flex flex-wrap gap-2">
                 {/* Undo / Redo */}
                 <Button variant="outline" size="icon" onClick={handleUndo} disabled={history.length === 0} title="בטל (Undo)">
@@ -872,7 +898,7 @@ const Index = () => {
             </div>
 
             {/* Week navigator */}
-            <Card className="border-primary/20 bg-gradient-to-l from-primary/5 via-transparent to-violet-500/5 overflow-hidden">
+            <Card className="border-primary/20 bg-primary/5 overflow-hidden">
               <CardContent className="py-4">
                 <div className="flex items-center justify-between gap-4">
                   <Button variant="outline" size="sm" onClick={handlePreviousWeek} className="gap-1 border-primary/30 hover:bg-primary/10 hover:text-primary">
@@ -899,30 +925,17 @@ const Index = () => {
 
             {schedule ? (
               <>
-                {/* Coverage banner */}
-                {(underScheduled.length > 0 || emptySlots > 0) && (
-                  <div className="flex flex-wrap gap-2 p-3 rounded-lg border border-orange-200 bg-orange-50 dark:bg-orange-950/20 dark:border-orange-800">
-                    <AlertTriangle className="h-4 w-4 text-orange-500 mt-0.5 shrink-0" />
-                    <div className="flex flex-wrap gap-2 flex-1">
-                      {emptySlots > 0 && (
-                        <span className="text-sm text-orange-700 dark:text-orange-300">
-                          {emptySlots} משבצות ריקות
-                        </span>
-                      )}
-                      {underScheduled.length > 0 && (
-                        <span className="text-sm text-orange-700 dark:text-orange-300">
-                          · עובדים מתחת למינימום:{" "}
-                          {underScheduled.map(w => `${w.emp.name} (${w.shifts}/${w.emp.minWeeklyShifts})`).join(", ")}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                )}
-                {underScheduled.length === 0 && emptySlots === 0 && (
-                  <div className="flex items-center gap-2 p-3 rounded-lg border border-green-200 bg-green-50 dark:bg-green-950/20 dark:border-green-800 text-green-700 dark:text-green-300 text-sm">
-                    <CheckCircle2 className="h-4 w-4 shrink-0" /> השיבוץ מלא — כל העובדים קיבלו את מינימום המשמרות
-                  </div>
-                )}
+                {/* Editorial status line */}
+                <div className="flex items-center gap-2.5 py-3 border-y border-border text-sm font-medium flex-wrap">
+                  {underScheduled.length === 0 && emptySlots === 0 ? (
+                    <><span className="w-2 h-2 rounded-full bg-success shrink-0" />השיבוץ מלא - כל העובדים קיבלו את מינימום המשמרות</>
+                  ) : (
+                    <><span className="w-2 h-2 rounded-full bg-warning shrink-0" />
+                      {emptySlots > 0 && <span className="text-foreground">{emptySlots} משבצות ריקות</span>}
+                      {underScheduled.length > 0 && <span className="text-muted-foreground">· מתחת למינימום: {underScheduled.map(w => `${w.emp.name} (${w.shifts}/${w.emp.minWeeklyShifts})`).join(", ")}</span>}
+                    </>
+                  )}
+                </div>
 
                 <div className="flex flex-wrap items-center gap-3 justify-end">
                   <div className="flex items-center gap-2">
@@ -953,39 +966,33 @@ const Index = () => {
                   />
                 </div>
 
-                {/* Workload dashboard */}
-                <Card>
-                  <CardHeader className="py-3 px-4">
-                    <CardTitle className="text-sm flex items-center gap-2">
-                      <BarChart2 className="h-4 w-4" /> עומס עובדים השבוע
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="pb-4 px-4">
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-                      {workloadData.map(({ emp, shifts }) => {
-                        const max = emp.maxWeeklyShifts ?? 5;
-                        const pct = Math.min((shifts / Math.max(max, 1)) * 100, 100);
-                        const isUnder = shifts < emp.minWeeklyShifts;
-                        const isOver = emp.maxWeeklyShifts != null && shifts > emp.maxWeeklyShifts;
-                        const barColor = isOver ? "bg-red-500" : isUnder ? "bg-orange-400" : "bg-green-500";
-                        return (
-                          <div key={emp.id} className="space-y-1">
-                            <div className="flex items-center justify-between">
-                              <span className="text-xs font-medium truncate max-w-[80px]" title={emp.name}>{emp.name}</span>
-                              <span className={`text-xs font-bold ${isOver ? "text-red-500" : isUnder ? "text-orange-500" : "text-green-600"}`}>
-                                {shifts}/{emp.maxWeeklyShifts ?? "∞"}
-                              </span>
-                            </div>
-                            <div className="h-2 bg-muted rounded-full overflow-hidden">
-                              <div className={`h-full rounded-full transition-all duration-300 ${barColor}`} style={{ width: `${pct}%` }} />
-                            </div>
-                            <div className="text-xs text-muted-foreground">מינ׳ {emp.minWeeklyShifts}</div>
+                {/* Workload - slim */}
+                <div>
+                  <p className="text-xs tracking-widest uppercase text-muted-foreground font-bold mb-4">עומס עובדים השבוע</p>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                    {workloadData.map(({ emp, shifts }) => {
+                      const max = emp.maxWeeklyShifts ?? 5;
+                      const pct = Math.min((shifts / Math.max(max, 1)) * 100, 100);
+                      const isUnder = shifts < emp.minWeeklyShifts;
+                      const isOver = emp.maxWeeklyShifts != null && shifts > emp.maxWeeklyShifts;
+                      const barColor = isOver ? "bg-destructive" : isUnder ? "bg-warning" : "bg-success";
+                      return (
+                        <div key={emp.id} className="space-y-1">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-medium truncate max-w-[80px]" title={emp.name}>{emp.name}</span>
+                            <span className={`text-xs font-bold ${isOver ? "text-destructive" : isUnder ? "text-warning" : "text-success"}`}>
+                              {shifts}/{emp.maxWeeklyShifts ?? "∞"}
+                            </span>
                           </div>
-                        );
-                      })}
-                    </div>
-                  </CardContent>
-                </Card>
+                          <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                            <div className={`h-full rounded-full transition-all duration-300 ${barColor}`} style={{ width: `${pct}%` }} />
+                          </div>
+                          <div className="text-xs text-muted-foreground">מינ׳ {emp.minWeeklyShifts}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
 
                 <div className="flex items-center gap-3 p-4 border rounded-lg bg-accent/20">
                   <Switch id="show-changes" checked={showChanges} onCheckedChange={setShowChanges} />
@@ -1005,13 +1012,13 @@ const Index = () => {
                 )}
               </>
             ) : (
-              <div className="text-center py-16 rounded-2xl border-2 border-dashed border-primary/20 bg-gradient-to-b from-primary/5 to-transparent">
-                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center mx-auto mb-4 shadow-lg shadow-indigo-200 dark:shadow-indigo-900/50">
-                  <Calendar className="h-8 w-8 text-white" />
+              <div className="text-center py-16 bg-primary/5 border-2 border-dashed border-border rounded-2xl">
+                <div className="w-16 h-16 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mx-auto mb-4">
+                  <Calendar className="h-8 w-8" />
                 </div>
                 <p className="text-lg font-semibold mb-1">אין שיבוץ פעיל</p>
                 <p className="text-muted-foreground text-sm mb-5">לחץ על "צור שיבוץ" ליצירת טבלת שיבוץ שבועית</p>
-                <Button onClick={handleGenerateSchedule} className="bg-gradient-to-l from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 shadow-md shadow-indigo-200 dark:shadow-indigo-900/50">
+                <Button onClick={handleGenerateSchedule} className="bg-primary hover:bg-primary/90 text-primary-foreground">
                   <Calendar className="h-4 w-4 ml-2" /> צור שיבוץ
                 </Button>
               </div>
@@ -1055,10 +1062,10 @@ const Index = () => {
           {/* ── Reports ── */}
           <TabsContent value="reports" className="space-y-6">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center">
-                <BarChart2 className="h-4 w-4 text-white" />
+              <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+                <BarChart2 className="h-4 w-4" />
               </div>
-              <h2 className="text-xl font-bold">דוחות לחשבות</h2>
+              <h2 className="text-xl font-extrabold">דוחות לחשבות</h2>
             </div>
             <MonthlyReport savedSchedules={savedSchedules} stations={stations} />
           </TabsContent>
