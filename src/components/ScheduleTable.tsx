@@ -114,7 +114,7 @@ export function ScheduleTable({
     if (lockedCells.has(cellKey(targetDate, targetStationId))) return;
     if (src.date === targetDate && src.stationId === targetStationId) return;
 
-    // Swap atomically — no conflict check needed
+    // Swap atomically - no conflict check needed
     onSwapCells(targetDate, targetStationId, src.date, src.stationId);
     dragSource.current = null;
     setDragOver(null);
@@ -144,7 +144,7 @@ export function ScheduleTable({
                   <TableHead
                     key={date}
                     className="text-center font-semibold min-w-[150px] py-3"
-                    style={{ borderBottomColor: 'hsl(var(--border))' }}
+                    style={{ borderBottomColor: 'hsl(var(--border-strong))' }}
                   >
                     <div className="text-sm font-bold text-foreground">{hebrewDaysReversed[idx]}</div>
                     <div className="text-xs font-normal text-muted-foreground mt-0.5">
@@ -285,7 +285,7 @@ export function ScheduleTable({
               className="w-full justify-start text-muted-foreground"
               onClick={() => handleSelectEmployee("")}
             >
-              — רוקן תא —
+              רוקן תא
             </Button>
             {employees.map(emp => (
               <Button
@@ -323,7 +323,7 @@ export function ScheduleTable({
                 <span className={entry.from ? "line-through text-muted-foreground" : "text-muted-foreground italic"}>
                   {entry.from || "ריק"}
                 </span>
-                <span className="text-muted-foreground">←</span>
+                <span className="text-muted-foreground text-xs">ל:</span>
                 <span className={entry.to ? "font-medium" : "text-muted-foreground italic"}>
                   {entry.to || "ריק"}
                 </span>
