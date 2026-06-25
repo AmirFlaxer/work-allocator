@@ -71,24 +71,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signIn = async (email: string, password: string) => {
     if (!supabase) return { error: "Supabase לא מוגדר" };
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-    return { error: error?.message ?? null };
+    return { error: error ? "מייל או סיסמה שגויים" : null };
   };
 
   const signUp = async (email: string, password: string, orgName: string, fullName: string) => {
     if (!supabase) return { error: "Supabase לא מוגדר" };
 
     const { data, error: authError } = await supabase.auth.signUp({ email, password });
-    if (authError) return { error: authError.message };
+    if (authError) return { error: "שגיאה בהרשמה - בדוק שהמייל תקין והסיסמה ארוכה מ-6 תווים" };
     if (!data.user) return { error: "שגיאה ביצירת המשתמש" };
 
     const orgId = crypto.randomUUID();
     const { error: orgError } = await supabase
       .from("organizations").insert({ id: orgId, name: orgName });
-    if (orgError) return { error: orgError.message };
+    if (orgError) return { error: "שגיאה ביצירת הארגון - נסה שוב" };
 
     const { error: profileError } = await supabase
       .from("profiles").insert({ id: data.user.id, org_id: orgId, role: "admin", full_name: fullName, email });
-    if (profileError) return { error: profileError.message };
+    if (profileError) return { error: "שגיאה ביצירת הפרופיל - נסה שוב" };
 
     await loadProfile(data.user.id);
     return { error: null };

@@ -17,12 +17,19 @@ interface DashboardProps {
   schedule: WeeklySchedule | null;
 }
 
+const BAR_COLORS = {
+  empty:   "hsl(240 12% 89%)",
+  low:     "hsl(142 70% 42%)",
+  medium:  "hsl(38 92% 52%)",
+  high:    "hsl(0 72% 55%)",
+};
+
 function getBarColor(shifts: number, max: number): string {
-  if (shifts === 0) return "#cbd5e1";
+  if (shifts === 0) return BAR_COLORS.empty;
   const ratio = shifts / Math.max(max, 1);
-  if (ratio <= 0.35) return "#22c55e";
-  if (ratio <= 0.65) return "#eab308";
-  return "#ef4444";
+  if (ratio <= 0.35) return BAR_COLORS.low;
+  if (ratio <= 0.65) return BAR_COLORS.medium;
+  return BAR_COLORS.high;
 }
 
 function calcWorkloads(schedule: WeeklySchedule): { [name: string]: number } {
@@ -39,7 +46,7 @@ const CustomTooltip = ({ active, payload }: { active: boolean; payload: any[] })
   if (active && payload?.length) {
     const { fullName, משמרות } = payload[0].payload;
     return (
-      <div className="bg-white border rounded-lg shadow-md px-3 py-2 text-sm">
+      <div className="bg-card border border-border rounded-lg shadow-md px-3 py-2 text-sm text-card-foreground">
         <p className="font-semibold">{fullName}</p>
         <p className="text-muted-foreground">{משמרות} משמרות השבוע</p>
       </div>

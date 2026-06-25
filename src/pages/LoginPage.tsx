@@ -6,7 +6,19 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Building2, Mail, Lock, User } from "lucide-react";
+import { Loader2, Building2, Mail, Lock, User, CheckCircle2, XCircle } from "lucide-react";
+
+const PASSWORD_RULES = [
+  { id: "length",    label: "לפחות 8 תווים",          test: (p: string) => p.length >= 8 },
+  { id: "upper",     label: "אות גדולה באנגלית (A-Z)", test: (p: string) => /[A-Z]/.test(p) },
+  { id: "lower",     label: "אות קטנה באנגלית (a-z)", test: (p: string) => /[a-z]/.test(p) },
+  { id: "digits",    label: "לפחות 2 ספרות",           test: (p: string) => (p.match(/\d/g) ?? []).length >= 2 },
+  { id: "symbols",   label: "לפחות 2 סימנים (!@#...)", test: (p: string) => (p.match(/[^A-Za-z0-9]/g) ?? []).length >= 2 },
+];
+
+function isPasswordValid(p: string) {
+  return PASSWORD_RULES.every(r => r.test(p));
+}
 
 export function LoginPage() {
   const { signIn, signUp } = useAuth();
@@ -31,6 +43,7 @@ export function LoginPage() {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isPasswordValid(regPassword)) return;
     setLoading(true);
     const { error } = await signUp(regEmail, regPassword, orgName, fullName);
     if (error) {
@@ -47,7 +60,7 @@ export function LoginPage() {
 
         {/* Logo & title */}
         <div className="text-center space-y-3">
-          <img src="/logo.svg" alt="לוגו" className="w-16 h-16 rounded-2xl mx-auto shadow-lg shadow-teal-200 dark:shadow-teal-900/50" />
+          <img src="/logo.svg" alt="" aria-hidden="true" className="w-16 h-16 rounded-2xl mx-auto shadow-lg shadow-teal-200 dark:shadow-teal-900/50" />
           <div>
             <h1 className="text-2xl font-bold bg-gradient-to-l from-violet-600 to-indigo-600 bg-clip-text text-transparent">
               מערכת שיבוץ עובדים
@@ -68,7 +81,7 @@ export function LoginPage() {
               {/* ── Login ── */}
               <TabsContent value="login">
                 <form onSubmit={handleLogin} className="space-y-4">
-                  <div className="space-y-1.5">
+                  <div className="space-y-2">
                     <Label className="text-sm font-medium">אימייל</Label>
                     <div className="relative">
                       <Mail className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -76,7 +89,7 @@ export function LoginPage() {
                         placeholder="your@email.com" className="pr-9" required />
                     </div>
                   </div>
-                  <div className="space-y-1.5">
+                  <div className="space-y-2">
                     <Label className="text-sm font-medium">סיסמה</Label>
                     <div className="relative">
                       <Lock className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -97,7 +110,7 @@ export function LoginPage() {
                     <Building2 className="h-4 w-4 shrink-0" />
                     יצירת ארגון חדש עם חשבון מנהל
                   </div>
-                  <div className="space-y-1.5">
+                  <div className="space-y-2">
                     <Label className="text-sm font-medium">שם הארגון</Label>
                     <div className="relative">
                       <Building2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -105,7 +118,7 @@ export function LoginPage() {
                         placeholder="בית חולים / מרפאה / עסק..." className="pr-9" required />
                     </div>
                   </div>
-                  <div className="space-y-1.5">
+                  <div className="space-y-2">
                     <Label className="text-sm font-medium">שמך המלא</Label>
                     <div className="relative">
                       <User className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -113,7 +126,7 @@ export function LoginPage() {
                         placeholder="ישראל ישראלי" className="pr-9" required />
                     </div>
                   </div>
-                  <div className="space-y-1.5">
+                  <div className="space-y-2">
                     <Label className="text-sm font-medium">אימייל</Label>
                     <div className="relative">
                       <Mail className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -121,15 +134,30 @@ export function LoginPage() {
                         placeholder="your@email.com" className="pr-9" required />
                     </div>
                   </div>
-                  <div className="space-y-1.5">
+                  <div className="space-y-2">
                     <Label className="text-sm font-medium">סיסמה</Label>
                     <div className="relative">
                       <Lock className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input type="password" value={regPassword} onChange={e => setRegPassword(e.target.value)}
-                        placeholder="לפחות 6 תווים" minLength={6} className="pr-9" required />
+                        placeholder="לפחות 8 תווים" className="pr-9" required />
                     </div>
+                    {regPassword.length > 0 && (
+                      <ul className="space-y-1 pt-1">
+                        {PASSWORD_RULES.map(rule => {
+                          const ok = rule.test(regPassword);
+                          return (
+                            <li key={rule.id} className={`flex items-center gap-2 text-xs ${ok ? "text-green-600 dark:text-green-400" : "text-muted-foreground"}`}>
+                              {ok
+                                ? <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+                                : <XCircle className="h-3.5 w-3.5 shrink-0" />}
+                              {rule.label}
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    )}
                   </div>
-                  <Button type="submit" className="w-full bg-gradient-to-l from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 shadow-md shadow-indigo-200 dark:shadow-indigo-900/30" disabled={loading}>
+                  <Button type="submit" className="w-full bg-gradient-to-l from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 shadow-md shadow-indigo-200 dark:shadow-indigo-900/30" disabled={loading || !isPasswordValid(regPassword)}>
                     {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "צור ארגון חדש"}
                   </Button>
                 </form>

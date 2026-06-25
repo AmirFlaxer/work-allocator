@@ -1,3 +1,4 @@
+import React from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -12,6 +13,19 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
+
+const SUPER_ADMIN_EMAILS = (import.meta.env.VITE_SUPER_ADMIN_EMAILS ?? "")
+  .split(",")
+  .map((e: string) => e.trim().toLowerCase())
+  .filter(Boolean);
+
+function SuperAdminRoute({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
+  if (!user || !SUPER_ADMIN_EMAILS.includes(user.email?.toLowerCase() ?? "")) {
+    return <NotFound />;
+  }
+  return <>{children}</>;
+}
 
 function AppContent() {
   const { user, loading } = useAuth();
@@ -34,7 +48,7 @@ function AppContent() {
   return (
     <Routes>
       <Route path="/" element={<Index />} />
-      <Route path="/admin" element={<RegistrantsPage />} />
+      <Route path="/admin" element={<SuperAdminRoute><RegistrantsPage /></SuperAdminRoute>} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );

@@ -34,7 +34,7 @@
     --success-foreground: 0 0% 100%;
 
     --warning: 38 92% 52%;
-    --warning-foreground: 0 0% 100%;
+    --warning-foreground: 38 80% 12%;
 
     --border: 240 12% 89%;
     --input: 240 12% 91%;
@@ -72,7 +72,7 @@
     --success-foreground: 0 0% 100%;
 
     --warning: 38 88% 58%;
-    --warning-foreground: 0 0% 100%;
+    --warning-foreground: 38 80% 10%;
 
     --border: 240 12% 20%;
     --input: 240 12% 18%;
