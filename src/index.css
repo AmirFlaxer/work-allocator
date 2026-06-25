@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;500;600;700;800&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -6,77 +6,81 @@
 
 @layer base {
   :root {
-    --background: 240 20% 98%;
-    --foreground: 240 15% 10%;
+    --background: 48 30% 98%;
+    --foreground: 175 37% 14%;
 
     --card: 0 0% 100%;
-    --card-foreground: 240 15% 10%;
+    --card-foreground: 175 37% 14%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 240 15% 10%;
+    --popover-foreground: 175 37% 14%;
 
-    --primary: 243 75% 59%;
+    --primary: 175 77% 24%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 240 15% 94%;
-    --secondary-foreground: 240 15% 20%;
+    --secondary: 156 17% 94%;
+    --secondary-foreground: 175 30% 20%;
 
-    --muted: 240 12% 95%;
-    --muted-foreground: 240 10% 52%;
+    --muted: 156 14% 95%;
+    --muted-foreground: 168 8% 45%;
 
-    --accent: 243 80% 95%;
-    --accent-foreground: 243 75% 45%;
+    --accent: 175 40% 94%;
+    --accent-foreground: 175 77% 22%;
 
-    --destructive: 0 72% 55%;
+    --destructive: 3 53% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    --success: 142 70% 42%;
+    --success: 158 80% 27%;
     --success-foreground: 0 0% 100%;
 
-    --warning: 38 92% 52%;
+    --warning: 38 74% 45%;
     --warning-foreground: 38 80% 12%;
 
-    --border: 240 12% 89%;
-    --input: 240 12% 91%;
-    --ring: 243 75% 59%;
+    --border: 156 17% 90%;
+    --input: 156 17% 88%;
+    --ring: 175 77% 24%;
 
     --radius: 0.625rem;
+
+    --border-strong: 175 37% 14%;
   }
 
   .dark {
-    --background: 240 20% 8%;
-    --foreground: 240 15% 95%;
+    --background: 174 41% 10%;
+    --foreground: 48 25% 92%;
 
-    --card: 240 18% 11%;
-    --card-foreground: 240 15% 95%;
+    --card: 175 37% 14%;
+    --card-foreground: 48 25% 92%;
 
-    --popover: 240 18% 11%;
-    --popover-foreground: 240 15% 95%;
+    --popover: 175 37% 14%;
+    --popover-foreground: 48 25% 92%;
 
-    --primary: 243 80% 68%;
-    --primary-foreground: 240 20% 8%;
+    --primary: 173 56% 42%;
+    --primary-foreground: 174 41% 8%;
 
-    --secondary: 240 15% 18%;
-    --secondary-foreground: 240 15% 90%;
+    --secondary: 175 25% 20%;
+    --secondary-foreground: 48 20% 88%;
 
-    --muted: 240 12% 16%;
-    --muted-foreground: 240 10% 58%;
+    --muted: 175 22% 18%;
+    --muted-foreground: 168 12% 60%;
 
-    --accent: 243 50% 22%;
-    --accent-foreground: 243 80% 78%;
+    --accent: 175 35% 22%;
+    --accent-foreground: 173 56% 70%;
 
-    --destructive: 0 65% 50%;
+    --destructive: 3 50% 52%;
     --destructive-foreground: 0 0% 100%;
 
-    --success: 142 65% 48%;
+    --success: 158 55% 42%;
     --success-foreground: 0 0% 100%;
 
-    --warning: 38 88% 58%;
+    --warning: 38 70% 55%;
     --warning-foreground: 38 80% 10%;
 
-    --border: 240 12% 20%;
-    --input: 240 12% 18%;
-    --ring: 243 80% 68%;
+    --border: 175 25% 24%;
+    --input: 175 25% 22%;
+    --ring: 173 56% 42%;
+
+    --border-strong: 48 25% 88%;
   }
 }
 
@@ -88,8 +92,7 @@
   body {
     @apply bg-background text-foreground;
     direction: rtl;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    font-family: 'Assistant', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     -webkit-font-smoothing: antialiased;
   }
 
@@ -99,19 +102,35 @@
 }
 
 @layer utilities {
-  .gradient-text {
-    @apply bg-gradient-to-l from-violet-600 to-indigo-600 bg-clip-text text-transparent;
+  .hairline { border-color: hsl(var(--border)); }
+
+  .masthead-title {
+    font-weight: 800;
+    letter-spacing: -0.04em;
+    line-height: 0.98;
   }
 
-  .dark .gradient-text {
-    @apply from-violet-400 to-indigo-400;
+  .index-num {
+    font-size: 0.6875rem;
+    font-weight: 700;
+    color: hsl(var(--muted-foreground));
   }
 
   .glass {
-    @apply bg-white/80 backdrop-blur-md dark:bg-slate-900/80;
+    @apply backdrop-blur-md;
+    background: hsl(var(--background) / 0.82);
   }
 
   .card-hover {
     @apply transition-all duration-200 hover:shadow-md hover:-translate-y-0.5;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
