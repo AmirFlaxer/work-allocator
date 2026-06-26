@@ -16,6 +16,7 @@ import { ScheduleTable } from "@/components/ScheduleTable";
 import { ScheduleChanges } from "@/components/ScheduleChanges";
 import { MonthlyReport } from "@/components/MonthlyReport";
 import { ContactDeveloper } from "@/components/ContactDeveloper";
+import { AboutDialog } from "@/components/AboutDialog";
 import { generateWeeklySchedule } from "@/lib/scheduler";
 import {
   Plus, Calendar, Users, MapPin, Save, FolderOpen, Trash2,
@@ -649,6 +650,8 @@ const Index = () => {
             {!isSupabaseConfigured && <CloudOff className="h-4 w-4 text-muted-foreground/40" title="נתונים מקומיים בלבד" />}
 
             <ContactDeveloper />
+
+            <AboutDialog />
 
             <Button variant="ghost" size="icon" onClick={() => setDarkMode(d => !d)}
               title={darkMode ? "מצב בהיר" : "מצב כהה"} className="rounded-xl hover:bg-primary/10">
