@@ -186,7 +186,7 @@ export function ScheduleTable({
                               >
                                 {locked && <Lock className="h-2.5 w-2.5 ml-1 inline" />}
                                 {!(cellColors && empColor) && (
-                                  <span className="inline-block w-1.5 h-1.5 rounded-full ml-1.5" style={{ background: getEmployeeColor(name).accent }} />
+                                  <span className="inline-block w-1.5 h-1.5 rounded-full ml-1.5" style={{ background: getEmployeeColor(name, darkMode).accent }} />
                                 )}
                                 {name}
                               </Badge>

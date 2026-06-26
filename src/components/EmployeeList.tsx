@@ -105,7 +105,7 @@ export function EmployeeList({
                     </h3>
                     <p className="text-xs text-muted-foreground mt-0.5">
                       {employee.minWeeklyShifts}
-                      {employee.maxWeeklyShifts !== undefined ? `–${employee.maxWeeklyShifts}` : "+"}
+                      {employee.maxWeeklyShifts !== undefined ? `-${employee.maxWeeklyShifts}` : "+"}
                       {" "}משמרות/שבוע
                     </p>
                   </div>

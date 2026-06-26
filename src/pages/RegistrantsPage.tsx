@@ -77,15 +77,15 @@ export function RegistrantsPage() {
                 {registrants.map((r) => (
                   <div key={r.id} className="py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                     <div className="space-y-1">
-                      <p className="font-medium">{r.full_name ?? "—"}</p>
+                      <p className="font-medium">{r.full_name ?? "-"}</p>
                       <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
                         <span className="flex items-center gap-1">
                           <Mail className="h-3.5 w-3.5" />
-                          {r.email ?? "—"}
+                          {r.email ?? "-"}
                         </span>
                         <span className="flex items-center gap-1">
                           <Building2 className="h-3.5 w-3.5" />
-                          {r.organizations?.name ?? "—"}
+                          {r.organizations?.name ?? "-"}
                         </span>
                       </div>
                     </div>

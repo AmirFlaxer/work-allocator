@@ -214,6 +214,7 @@ const Index = () => {
         LOCAL_KEYS.forEach(k => localStorage.removeItem(k));
         setEmployees([]); setStations([]); setSchedule(null);
         setSavedSchedules([]); setTemplates([]); setLockedCells(new Set()); setAuditLog({});
+        setCellColors(true);
         setWeekStart(getNextSunday(new Date()));
       } else {
         if (store.employees)      setEmployees(store.employees as Employee[]);

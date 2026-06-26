@@ -145,7 +145,7 @@ export function MonthlyReport({ savedSchedules, stations }: MonthlyReportProps) 
   const handleExportExcel = () => {
     const wb = XLSX.utils.book_new();
     const ws1 = XLSX.utils.aoa_to_sheet([
-      [`דוח משמרות חודשי — ${HEBREW_MONTHS[month]} ${year}`], [],
+      [`דוח משמרות חודשי - ${HEBREW_MONTHS[month]} ${year}`], [],
       ["שם עובד", 'סה"כ משמרות'],
       ...report.map(e => [e.name, e.totalShifts]),
       [], ['סה"כ', totalShifts],
@@ -154,7 +154,7 @@ export function MonthlyReport({ savedSchedules, stations }: MonthlyReportProps) 
     XLSX.utils.book_append_sheet(wb, ws1, "סיכום");
 
     const detailData: (string | number)[][] = [
-      [`פירוט משמרות — ${HEBREW_MONTHS[month]} ${year}`], [],
+      [`פירוט משמרות - ${HEBREW_MONTHS[month]} ${year}`], [],
       ["שם עובד", "תאריך", "עמדה"],
     ];
     report.forEach(emp => emp.shifts.forEach(s => detailData.push([emp.name, s.date, s.stationName])));
@@ -163,7 +163,7 @@ export function MonthlyReport({ savedSchedules, stations }: MonthlyReportProps) 
     XLSX.utils.book_append_sheet(wb, ws2, "פירוט");
 
     const stData: (string | number)[][] = [
-      [`דוח עמדות — ${HEBREW_MONTHS[month]} ${year}`], [],
+      [`דוח עמדות - ${HEBREW_MONTHS[month]} ${year}`], [],
       ["עמדה", "אוישה", "ריקה", 'סה"כ', "% אכלוס"],
       ...stationReport.map(s => [
         s.name, s.filled, s.empty, s.total,
@@ -180,7 +180,7 @@ export function MonthlyReport({ savedSchedules, stations }: MonthlyReportProps) 
   const handleExportSingleEmployee = (emp: EmployeeReport) => {
     const wb = XLSX.utils.book_new();
     const data: (string | number)[][] = [
-      [`דוח משמרות — ${emp.name}`],
+      [`דוח משמרות - ${emp.name}`],
       [`חודש: ${HEBREW_MONTHS[month]} ${year}`],
       [`סה"כ משמרות: ${emp.totalShifts}`],
       [],
@@ -259,7 +259,7 @@ export function MonthlyReport({ savedSchedules, stations }: MonthlyReportProps) 
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center justify-between">
-                <span>סיכום — {HEBREW_MONTHS[month]} {year}</span>
+                <span>סיכום - {HEBREW_MONTHS[month]} {year}</span>
                 <Badge variant="secondary" className="text-base px-3 py-1">{totalShifts} משמרות סה"כ</Badge>
               </CardTitle>
             </CardHeader>
@@ -384,7 +384,7 @@ export function MonthlyReport({ savedSchedules, stations }: MonthlyReportProps) 
           ) : (
             <Card>
               <CardHeader>
-                <CardTitle>אכלוס עמדות — {HEBREW_MONTHS[month]} {year}</CardTitle>
+                <CardTitle>אכלוס עמדות - {HEBREW_MONTHS[month]} {year}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <ResponsiveContainer width="100%" height={250}>
@@ -440,7 +440,7 @@ export function MonthlyReport({ savedSchedules, stations }: MonthlyReportProps) 
           ) : (
             <Card>
               <CardHeader>
-                <CardTitle>עומס עובדים — 6 חודשים אחרונים</CardTitle>
+                <CardTitle>עומס עובדים - 6 חודשים אחרונים</CardTitle>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={320}>

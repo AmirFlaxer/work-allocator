@@ -170,7 +170,7 @@ export function WeeklyPreferences({ employees, stations, weekStart, onUpdate }: 
               בקשות שיבוץ ספציפיות{" "}
               <span className="text-xs font-normal text-muted-foreground">
                 {selectedEmp.hasStar
-                  ? "(עובד עם כוכב — יתקיים תמיד)"
+                  ? "(עובד עם כוכב - יתקיים תמיד)"
                   : "(ינסה להתחשב, לא מובטח)"}
               </span>
             </h3>

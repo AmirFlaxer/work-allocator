@@ -88,7 +88,7 @@ export function ContactDeveloper() {
                 id="contact-msg"
                 value={message}
                 onChange={e => setMessage(e.target.value)}
-                placeholder="שאלה, בקשה, רעיון — הכל מתקבל בברכה"
+                placeholder="שאלה, בקשה, רעיון - הכל מתקבל בברכה"
                 rows={5}
                 className="resize-none"
               />

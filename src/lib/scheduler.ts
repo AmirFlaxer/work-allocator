@@ -14,7 +14,7 @@ export function generateWeeklySchedule(
   const schedule: WeeklySchedule = {};
   const weekDays = getWeekDays(weekStart);
 
-  // Initialize — preserve locked cells from baseSchedule
+  // Initialize - preserve locked cells from baseSchedule
   weekDays.forEach(date => {
     schedule[date] = {};
     stations.forEach(station => {
@@ -142,7 +142,7 @@ export function generateWeeklySchedule(
     });
   });
 
-  // Pass 6: Last resort — allow multiple stations/day
+  // Pass 6: Last resort - allow multiple stations/day
   weekDays.forEach(date => {
     stations.forEach(station => {
       if (!canPlace(date, station.id)) return;
