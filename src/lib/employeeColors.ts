@@ -30,8 +30,9 @@ export function getEmployeeColor(name: string, dark = false): EmployeeColor {
     };
   }
   return {
+    // text L=29% keeps all 12 hues at WCAG AA contrast (>=4.5:1) on the L=89% bg
     bg: `hsl(${hue} 44% 89%)`,
-    text: `hsl(${hue} 45% 32%)`,
+    text: `hsl(${hue} 45% 29%)`,
     accent: `hsl(${hue} 48% 46%)`,
   };
 }
