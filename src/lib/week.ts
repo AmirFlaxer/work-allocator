@@ -1,3 +1,5 @@
+import { Station, Cell } from "@/types/employee";
+
 // Single source of truth for week-day logic (was duplicated across 4 files).
 
 export const ALL_HEBREW_DAYS = [
@@ -30,10 +32,8 @@ export function getHebrewDayLabels(activeDays: number[]): string[] {
   return normalizeActiveDays(activeDays).map(weekday => ALL_HEBREW_DAYS[weekday]);
 }
 
-import { Station, Cell } from "@/types/employee";
-
 // Normalize a cell to an array of names. Accepts legacy string cells.
-export function cellNames(cell: Cell | undefined): string[] {
+export function cellNames(cell: Cell | undefined | null): string[] {
   if (cell === undefined || cell === null) return [];
   return Array.isArray(cell) ? cell : [cell];
 }
