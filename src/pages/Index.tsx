@@ -18,7 +18,7 @@ import { MonthlyReport } from "@/components/MonthlyReport";
 import { ContactDeveloper } from "@/components/ContactDeveloper";
 import { AboutDialog } from "@/components/AboutDialog";
 import { generateWeeklySchedule } from "@/lib/scheduler";
-import { getWeekDays, getHebrewDayLabels, DEFAULT_ACTIVE_DAYS, ALL_HEBREW_DAYS, cellNames, stationSlots, cellKey } from "@/lib/week";
+import { getWeekDays, getHebrewDayLabels, DEFAULT_ACTIVE_DAYS, ALL_HEBREW_DAYS, cellNames, stationSlots, cellKey, dailyShiftCap } from "@/lib/week";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Plus, Calendar, Users, MapPin, Save, FolderOpen, Trash2,
@@ -488,17 +488,17 @@ const Index = () => {
   // ── Cell edit & lock ───────────────────────────────────
   const handleCellEdit = (date: string, stationId: number, slotIndex: number, employeeName: string) => {
     if (employeeName && schedule) {
-      // Block double-assignment on same day (any station, any slot, excluding this slot).
-      const alreadyThisDay = stations.some(st =>
-        cellNames(schedule[date]?.[st.id]).some((n, i) =>
+      const employee = employees.find(e => e.name === employeeName);
+      // Block exceeding the employee's max shifts per day.
+      const sameDayCount = stations.reduce((acc, st) =>
+        acc + cellNames(schedule[date]?.[st.id]).filter((n, i) =>
           n === employeeName && !(st.id === stationId && i === slotIndex)
-        )
-      );
-      if (alreadyThisDay) {
-        toast({ title: "שיבוץ כפול", description: `${employeeName} כבר משובץ/ת ביום זה בעמדה אחרת`, variant: "destructive" });
+        ).length, 0);
+      const cap = employee ? dailyShiftCap(employee) : 1;
+      if (sameDayCount >= cap) {
+        toast({ title: "מקסימום שיבוצים ביום", description: `${employeeName} כבר עם ${sameDayCount} שיבוצים ביום זה (מקסימום: ${cap})`, variant: "destructive" });
         return;
       }
-      const employee = employees.find(e => e.name === employeeName);
       if (employee?.maxWeeklyShifts != null) {
         const weekDays = getWeekDays(weekStart, activeDays);
         const currentShifts = weekDays.filter(
