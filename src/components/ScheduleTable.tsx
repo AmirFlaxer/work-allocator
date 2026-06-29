@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Lock, LockOpen, Pencil, X, Eye, History } from "lucide-react";
 import { calculateWorkloads } from "@/lib/scheduler";
-import { getWeekDays, getHebrewDayLabels } from "@/lib/week";
+import { getWeekDays, getHebrewDayLabels, cellNames, stationSlots, cellKey } from "@/lib/week";
 import { getEmployeeColor } from "@/lib/employeeColors";
 
 interface ScheduleTableProps {
@@ -22,15 +22,11 @@ interface ScheduleTableProps {
   activeDays: number[];
   lockedCells: Set<string>;
   auditLog: { [cellKey: string]: AuditEntry[] };
-  onCellEdit: (date: string, stationId: number, employeeName: string) => void;
-  onSwapCells: (date1: string, stationId1: number, date2: string, stationId2: number) => void;
-  onToggleLock: (date: string, stationId: number) => void;
+  onCellEdit: (date: string, stationId: number, slotIndex: number, employeeName: string) => void;
+  onSwapCells: (date1: string, stationId1: number, slot1: number, date2: string, stationId2: number, slot2: number) => void;
+  onToggleLock: (date: string, stationId: number, slotIndex: number) => void;
   cellColors?: boolean;
   darkMode?: boolean;
-}
-
-function cellKey(date: string, stationId: number) {
-  return `${date}__${stationId}`;
 }
 
 function badgeStyle(shifts: number): string {
@@ -52,7 +48,7 @@ export function ScheduleTable({
   const workloads = calculateWorkloads(schedule);
 
   // Edit dialog
-  const [editCell, setEditCell] = useState<{ date: string; stationId: number } | null>(null);
+  const [editCell, setEditCell] = useState<{ date: string; stationId: number; slotIndex: number } | null>(null);
 
   // Employee detail dialog
   const [viewEmployee, setViewEmployee] = useState<string | null>(null);
@@ -61,38 +57,43 @@ export function ScheduleTable({
   const [auditCell, setAuditCell] = useState<string | null>(null);
 
   // Drag state
-  const dragSource = useRef<{ date: string; stationId: number; name: string } | null>(null);
+  const dragSource = useRef<{ date: string; stationId: number; slotIndex: number; name: string } | null>(null);
   const [dragOver, setDragOver] = useState<string | null>(null);
 
   const emptyPerDay = weekDays.map(date =>
-    Object.values(schedule[date] ?? {}).filter(v => v === "").length
+    stations.reduce((acc, st) => {
+      const names = cellNames(schedule[date]?.[st.id]);
+      let empty = 0;
+      for (let i = 0; i < stationSlots(st); i++) if (!names[i]) empty++;
+      return acc + empty;
+    }, 0)
   );
 
-  const handleCellClick = (date: string, stationId: number) => {
-    if (lockedCells.has(cellKey(date, stationId))) return;
-    setEditCell({ date, stationId });
+  const handleCellClick = (date: string, stationId: number, slotIndex: number) => {
+    if (lockedCells.has(cellKey(date, stationId, slotIndex))) return;
+    setEditCell({ date, stationId, slotIndex });
   };
 
   const handleSelectEmployee = (name: string) => {
     if (!editCell) return;
-    onCellEdit(editCell.date, editCell.stationId, name);
+    onCellEdit(editCell.date, editCell.stationId, editCell.slotIndex, name);
     setEditCell(null);
   };
 
   // Drag handlers
-  const handleDragStart = (date: string, stationId: number, name: string) => {
-    if (lockedCells.has(cellKey(date, stationId))) return;
-    dragSource.current = { date, stationId, name };
+  const handleDragStart = (date: string, stationId: number, slotIndex: number, name: string) => {
+    if (lockedCells.has(cellKey(date, stationId, slotIndex))) return;
+    dragSource.current = { date, stationId, slotIndex, name };
   };
 
-  const handleDrop = (targetDate: string, targetStationId: number) => {
+  const handleDrop = (targetDate: string, targetStationId: number, targetSlot: number) => {
     const src = dragSource.current;
     if (!src) return;
-    if (lockedCells.has(cellKey(targetDate, targetStationId))) return;
-    if (src.date === targetDate && src.stationId === targetStationId) return;
+    if (lockedCells.has(cellKey(targetDate, targetStationId, targetSlot))) return;
+    if (src.date === targetDate && src.stationId === targetStationId && src.slotIndex === targetSlot) return;
 
     // Swap atomically - no conflict check needed
-    onSwapCells(targetDate, targetStationId, src.date, src.stationId);
+    onSwapCells(targetDate, targetStationId, targetSlot, src.date, src.stationId, src.slotIndex);
     dragSource.current = null;
     setDragOver(null);
   };
@@ -101,7 +102,7 @@ export function ScheduleTable({
   const employeeWeekShifts = viewEmployee
     ? weekDays.flatMap(date =>
         stations
-          .filter(s => schedule[date]?.[s.id] === viewEmployee)
+          .filter(s => cellNames(schedule[date]?.[s.id]).includes(viewEmployee))
           .map(s => ({
             day: hebrewDays[weekDays.indexOf(date)],
             date,
@@ -141,9 +142,9 @@ export function ScheduleTable({
               {stations.map(station => (
                 <TableRow key={station.id} className="border-b border-border hover:bg-muted/30 transition-colors">
                   {weekDays.map(date => {
-                    const name = schedule[date]?.[station.id] ?? "";
+                    const name = cellNames(schedule[date]?.[station.id])[0] ?? "";
                     const shifts = workloads[name] ?? 0;
-                    const key = cellKey(date, station.id);
+                    const key = cellKey(date, station.id, 0);
                     const locked = lockedCells.has(key);
                     const isDragOver = dragOver === key;
 
@@ -158,7 +159,7 @@ export function ScheduleTable({
                         className={`text-center py-2 px-2 transition-colors ${isDragOver ? "bg-primary/10" : ""}`}
                         onDragOver={e => { e.preventDefault(); setDragOver(key); }}
                         onDragLeave={() => setDragOver(null)}
-                        onDrop={() => handleDrop(date, station.id)}
+                        onDrop={() => handleDrop(date, station.id, 0)}
                       >
                         <div className="flex items-center justify-center gap-1 group">
                           {name ? (
@@ -166,7 +167,7 @@ export function ScheduleTable({
                               <Badge
                                 variant="secondary"
                                 draggable={!locked}
-                                onDragStart={() => handleDragStart(date, station.id, name)}
+                                onDragStart={() => handleDragStart(date, station.id, 0, name)}
                                 onDragEnd={() => { dragSource.current = null; setDragOver(null); }}
                                 className={`font-medium text-xs px-2.5 py-1 rounded-md border select-none transition-all
                                   ${locked ? "ring-2 ring-orange-300 dark:ring-orange-700 cursor-not-allowed" : "cursor-grab active:cursor-grabbing hover:scale-105"}
@@ -174,7 +175,7 @@ export function ScheduleTable({
                                 `}
                                 style={chipStyle}
                                 title={`לחץ לעריכה${locked ? " (נעול)" : ""}`}
-                                onClick={() => !locked && handleCellClick(date, station.id)}
+                                onClick={() => !locked && handleCellClick(date, station.id, 0)}
                               >
                                 {locked && <Lock className="h-2.5 w-2.5 ml-1 inline" />}
                                 {!(cellColors && empColor) && (
@@ -193,7 +194,7 @@ export function ScheduleTable({
                           ) : (
                             <button
                               className="opacity-0 group-hover:opacity-60 transition-all text-xs cursor-pointer text-primary border border-dashed border-primary/40 rounded-full px-2.5 py-0.5 hover:opacity-100 hover:bg-primary/5 hover:border-primary/60"
-                              onClick={() => handleCellClick(date, station.id)}
+                              onClick={() => handleCellClick(date, station.id, 0)}
                             >
                               + שבץ
                             </button>
@@ -201,7 +202,7 @@ export function ScheduleTable({
                           <button
                             className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded hover:bg-muted"
                             title={locked ? "בטל נעילה" : "נעל תא"}
-                            onClick={() => onToggleLock(date, station.id)}
+                            onClick={() => onToggleLock(date, station.id, 0)}
                           >
                             {locked
                               ? <Lock className="h-3 w-3 text-orange-400" />

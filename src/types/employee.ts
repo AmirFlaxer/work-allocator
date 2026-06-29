@@ -14,11 +14,14 @@ export interface Employee {
 export interface Station {
   id: number;
   name: string;
+  requiredCount?: number;
 }
+
+export type Cell = string | string[];
 
 export interface WeeklySchedule {
   [date: string]: {
-    [stationId: number]: string;
+    [stationId: number]: Cell;
   };
 }
 

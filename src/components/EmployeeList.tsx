@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Star, Pencil, Trash2, Layers } from "lucide-react";
 import { getEmployeeColor } from "@/lib/employeeColors";
+import { cellNames } from "@/lib/week";
 
 interface EmployeeListProps {
   employees: Employee[];
@@ -16,7 +17,7 @@ interface EmployeeListProps {
 function getShiftCount(name: string, schedule?: WeeklySchedule | null): number {
   if (!schedule) return 0;
   return Object.values(schedule).reduce(
-    (acc, day) => acc + Object.values(day).filter(v => v === name).length,
+    (acc, day) => acc + Object.values(day).reduce((a, cell) => a + cellNames(cell).filter(v => v === name).length, 0),
     0
   );
 }

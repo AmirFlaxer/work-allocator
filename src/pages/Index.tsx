@@ -18,7 +18,7 @@ import { MonthlyReport } from "@/components/MonthlyReport";
 import { ContactDeveloper } from "@/components/ContactDeveloper";
 import { AboutDialog } from "@/components/AboutDialog";
 import { generateWeeklySchedule } from "@/lib/scheduler";
-import { getWeekDays, getHebrewDayLabels, DEFAULT_ACTIVE_DAYS, ALL_HEBREW_DAYS } from "@/lib/week";
+import { getWeekDays, getHebrewDayLabels, DEFAULT_ACTIVE_DAYS, ALL_HEBREW_DAYS, cellNames, stationSlots, cellKey } from "@/lib/week";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Plus, Calendar, Users, MapPin, Save, FolderOpen, Trash2,
@@ -54,10 +54,6 @@ function formatWeekRange(weekStart: Date, activeDays: number[]): string {
   const s = new Date(days[0]).toLocaleDateString("he-IL", { weekday: "long", day: "2-digit", month: "long" });
   const e = new Date(days[days.length - 1]).toLocaleDateString("he-IL", { weekday: "long", day: "2-digit", month: "long", year: "numeric" });
   return `${s} · ${e}`;
-}
-
-function cellKey(date: string, stationId: number) {
-  return `${date}__${stationId}`;
 }
 
 const MAX_HISTORY = 30;
@@ -328,8 +324,12 @@ const Index = () => {
       weekDays.forEach(date => {
         baseSchedule![date] = {};
         stations.forEach(st => {
-          const key = cellKey(date, st.id);
-          baseSchedule![date][st.id] = lockedCells.has(key) ? (schedule[date]?.[st.id] ?? "") : "";
+          const names = cellNames(schedule[date]?.[st.id]);
+          const arr: string[] = [];
+          for (let i = 0; i < stationSlots(st); i++) {
+            arr[i] = lockedCells.has(cellKey(date, st.id, i)) ? (names[i] ?? "") : "";
+          }
+          baseSchedule![date][st.id] = arr;
         });
       });
     }
@@ -479,74 +479,73 @@ const Index = () => {
   };
 
   // ── Audit ───────────────────────────────────────────────
-  const addAuditEntry = useCallback((date: string, stationId: number, from: string, to: string) => {
-    const key = cellKey(date, stationId);
+  const addAuditEntry = useCallback((date: string, stationId: number, slotIndex: number, from: string, to: string) => {
+    const key = cellKey(date, stationId, slotIndex);
     const entry: AuditEntry = { from, to, timestamp: new Date().toISOString() };
     setAuditLog(prev => ({ ...prev, [key]: [...(prev[key] ?? []).slice(-19), entry] }));
   }, []);
 
   // ── Cell edit & lock ───────────────────────────────────
-  const handleCellEdit = (date: string, stationId: number, employeeName: string) => {
+  const handleCellEdit = (date: string, stationId: number, slotIndex: number, employeeName: string) => {
     if (employeeName && schedule) {
-      // Block double-assignment on same day
-      const alreadyThisDay = Object.entries(schedule[date] ?? {}).some(
-        ([sid, name]) => name === employeeName && Number(sid) !== stationId
+      // Block double-assignment on same day (any station, any slot, excluding this slot).
+      const alreadyThisDay = stations.some(st =>
+        cellNames(schedule[date]?.[st.id]).some((n, i) =>
+          n === employeeName && !(st.id === stationId && i === slotIndex)
+        )
       );
       if (alreadyThisDay) {
-        toast({
-          title: "שיבוץ כפול",
-          description: `${employeeName} כבר משובץ/ת ביום זה בעמדה אחרת`,
-          variant: "destructive",
-        });
+        toast({ title: "שיבוץ כפול", description: `${employeeName} כבר משובץ/ת ביום זה בעמדה אחרת`, variant: "destructive" });
         return;
       }
-
-      // Block exceeding maxWeeklyShifts
       const employee = employees.find(e => e.name === employeeName);
       if (employee?.maxWeeklyShifts != null) {
         const weekDays = getWeekDays(weekStart, activeDays);
         const currentShifts = weekDays.filter(
-          d => d !== date && Object.values(schedule[d] ?? {}).includes(employeeName)
+          d => d !== date && stations.some(st => cellNames(schedule[d]?.[st.id]).includes(employeeName))
         ).length;
         if (currentShifts + 1 > employee.maxWeeklyShifts) {
-          toast({
-            title: "חריגה ממקסימום משמרות",
-            description: `${employeeName} כבר עם ${currentShifts} משמרות (מקסימום: ${employee.maxWeeklyShifts})`,
-            variant: "destructive",
-          });
+          toast({ title: "חריגה ממקסימום משמרות", description: `${employeeName} כבר עם ${currentShifts} משמרות (מקסימום: ${employee.maxWeeklyShifts})`, variant: "destructive" });
           return;
         }
       }
     }
 
-    const currentValue = schedule?.[date]?.[stationId] ?? "";
-    addAuditEntry(date, stationId, currentValue, employeeName);
+    const currentValue = cellNames(schedule?.[date]?.[stationId])[slotIndex] ?? "";
+    addAuditEntry(date, stationId, slotIndex, currentValue, employeeName);
     setSchedule(prev => {
       if (!prev) return prev;
       pushHistory(prev);
-      return { ...prev, [date]: { ...prev[date], [stationId]: employeeName } };
+      const arr = [...cellNames(prev[date]?.[stationId])];
+      while (arr.length <= slotIndex) arr.push("");
+      arr[slotIndex] = employeeName;
+      return { ...prev, [date]: { ...prev[date], [stationId]: arr } };
     });
   };
 
-  const handleSwapCells = (date1: string, stationId1: number, date2: string, stationId2: number) => {
+  const handleSwapCells = (date1: string, stationId1: number, slot1: number, date2: string, stationId2: number, slot2: number) => {
     if (!schedule) return;
-    const name1 = schedule[date1]?.[stationId1] ?? "";
-    const name2 = schedule[date2]?.[stationId2] ?? "";
-    addAuditEntry(date1, stationId1, name1, name2);
-    addAuditEntry(date2, stationId2, name2, name1);
+    const name1 = cellNames(schedule[date1]?.[stationId1])[slot1] ?? "";
+    const name2 = cellNames(schedule[date2]?.[stationId2])[slot2] ?? "";
+    addAuditEntry(date1, stationId1, slot1, name1, name2);
+    addAuditEntry(date2, stationId2, slot2, name2, name1);
     setSchedule(prev => {
       if (!prev) return prev;
       pushHistory(prev);
-      return {
-        ...prev,
-        [date1]: { ...prev[date1], [stationId1]: name2 },
-        [date2]: { ...prev[date2], [stationId2]: name1 },
+      const setSlot = (sched: WeeklySchedule, date: string, sid: number, slot: number, val: string) => {
+        const arr = [...cellNames(sched[date]?.[sid])];
+        while (arr.length <= slot) arr.push("");
+        arr[slot] = val;
+        return { ...sched[date], [sid]: arr };
       };
+      let next = { ...prev, [date1]: setSlot(prev, date1, stationId1, slot1, name2) };
+      next = { ...next, [date2]: setSlot(next, date2, stationId2, slot2, name1) };
+      return next;
     });
   };
 
-  const handleToggleLock = (date: string, stationId: number) => {
-    const key = cellKey(date, stationId);
+  const handleToggleLock = (date: string, stationId: number, slotIndex: number) => {
+    const key = cellKey(date, stationId, slotIndex);
     setLockedCells(prev => {
       const next = new Set(prev);
       if (next.has(key)) { next.delete(key); toast({ title: "נעילה בוטלה" }); }
@@ -570,7 +569,7 @@ const Index = () => {
     )];
     const data = stations.map(station => [
       station.name,
-      ...weekDays.map(date => schedule[date]?.[station.id] || "לא משובץ"),
+      ...weekDays.map(date => cellNames(schedule[date]?.[station.id]).filter(Boolean).join(", ") || "לא משובץ"),
     ]);
     const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
     const wb = XLSX.utils.book_new();
@@ -607,18 +606,18 @@ const Index = () => {
     const days = getWeekDays(weekStart, activeDays);
     return employees.map(emp => {
       const shifts = days.filter(d =>
-        Object.values(schedule[d] ?? {}).includes(emp.name)
+        stations.some(st => cellNames(schedule[d]?.[st.id]).includes(emp.name))
       ).length;
       return { emp, shifts };
     });
-  }, [schedule, employees, weekStart, activeDays]);
+  }, [schedule, employees, weekStart, activeDays, stations]);
 
   const underScheduled = workloadData.filter(w => w.shifts < w.emp.minWeeklyShifts);
 
   const emptySlots = useMemo(() => {
     if (!schedule) return 0;
     return Object.values(schedule).reduce(
-      (count, day) => count + Object.values(day).filter(v => !v).length, 0
+      (count, day) => count + Object.values(day).reduce((a, cell) => a + cellNames(cell).filter(v => !v).length, 0), 0
     );
   }, [schedule]);
 
