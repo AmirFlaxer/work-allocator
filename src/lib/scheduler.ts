@@ -1,5 +1,5 @@
 import { Employee, Station, WeeklySchedule } from "@/types/employee";
-import { getWeekDays, cellNames, stationSlots, cellKey } from "@/lib/week";
+import { getWeekDays, cellNames, stationSlots, cellKey, dailyShiftCap } from "@/lib/week";
 
 export function generateWeeklySchedule(
   employees: Employee[],
@@ -29,14 +29,14 @@ export function generateWeeklySchedule(
 
   const slotArr = (date: string, stationId: number) => schedule[date][stationId] as string[];
 
-  // Track one-shift-per-day per employee.
-  const employeeAssignments: { [employeeId: string]: { [date: string]: boolean } } = {};
+  // Track how many shifts each employee has per day (0 = none).
+  const employeeAssignments: { [employeeId: string]: { [date: string]: number } } = {};
   employees.forEach(emp => {
     employeeAssignments[emp.id] = {};
     weekDays.forEach(date => {
-      employeeAssignments[emp.id][date] = stations.some(st =>
+      employeeAssignments[emp.id][date] = stations.filter(st =>
         slotArr(date, st.id).includes(emp.name)
-      );
+      ).length;
     });
   });
 
@@ -46,7 +46,7 @@ export function generateWeeklySchedule(
       : emp.availableStations;
 
   const getAssignedCount = (empId: string) =>
-    Object.values(employeeAssignments[empId]).filter(Boolean).length;
+    Object.values(employeeAssignments[empId]).filter(c => c > 0).length;
 
   const reachedMax = (emp: Employee) => {
     if (emp.maxWeeklyShifts === undefined || emp.maxWeeklyShifts === null) return false;
@@ -66,7 +66,7 @@ export function generateWeeklySchedule(
     const slot = freeSlot(date, stationId);
     if (slot < 0) return false;
     slotArr(date, stationId)[slot] = emp.name;
-    employeeAssignments[emp.id][date] = true;
+    employeeAssignments[emp.id][date] += 1;
     return true;
   };
 
@@ -146,13 +146,13 @@ export function generateWeeklySchedule(
     });
   });
 
-  // Pass 6: Last resort - allow multiple stations/day.
+  // Pass 6: Last resort - allow extra shifts/day up to each employee's daily cap.
   weekDays.forEach(date => {
     stations.forEach(station => {
       while (freeSlot(date, station.id) >= 0) {
         const multi = employees.find(emp =>
           availableStationsFor(emp).includes(station.id) &&
-          emp.canWorkMultipleStations === true &&
+          employeeAssignments[emp.id][date] < dailyShiftCap(emp) &&
           !emp.unavailableDays?.includes(date) &&
           !reachedMax(emp) &&
           !slotArr(date, station.id).includes(emp.name)
@@ -160,7 +160,7 @@ export function generateWeeklySchedule(
         if (!multi) break;
         const slot = freeSlot(date, station.id);
         slotArr(date, station.id)[slot] = multi.name;
-        employeeAssignments[multi.id][date] = true;
+        employeeAssignments[multi.id][date] += 1;
       }
     });
   });
