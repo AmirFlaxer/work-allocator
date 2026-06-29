@@ -1,4 +1,4 @@
-import { Station, Cell } from "@/types/employee";
+import { Station, Cell, Employee } from "@/types/employee";
 
 // Single source of truth for week-day logic (was duplicated across 4 files).
 
@@ -41,6 +41,13 @@ export function cellNames(cell: Cell | undefined | null): string[] {
 // How many simultaneous employees a station needs (default 1).
 export function stationSlots(station: Station): number {
   return Math.max(1, station.requiredCount ?? 1);
+}
+
+// How many shifts an employee may work in a single day (default 1).
+// Reads maxDailyShifts, falling back to the legacy canWorkMultipleStations flag.
+export function dailyShiftCap(employee: Employee): number {
+  if (employee.maxDailyShifts != null) return Math.max(1, employee.maxDailyShifts);
+  return employee.canWorkMultipleStations ? 2 : 1;
 }
 
 // Cell identity key including the slot index.
