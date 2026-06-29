@@ -710,8 +710,9 @@ const Index = () => {
                 {ALL_HEBREW_DAYS.map((label, idx) => {
                   const checked = activeDays.includes(idx);
                   return (
-                    <label key={idx} className="flex items-center gap-2 cursor-pointer">
+                    <div key={idx} className="flex items-center gap-2">
                       <Checkbox
+                        id={`workday-${idx}`}
                         checked={checked}
                         onCheckedChange={() => {
                           setActiveDays(prev => {
@@ -720,8 +721,8 @@ const Index = () => {
                           });
                         }}
                       />
-                      <span className="text-sm">{label}</span>
-                    </label>
+                      <Label htmlFor={`workday-${idx}`} className="text-sm cursor-pointer">{label}</Label>
+                    </div>
                   );
                 })}
               </div>

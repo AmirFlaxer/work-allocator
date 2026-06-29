@@ -160,6 +160,7 @@ export function generateWeeklySchedule(
         if (!multi) break;
         const slot = freeSlot(date, station.id);
         slotArr(date, station.id)[slot] = multi.name;
+        employeeAssignments[multi.id][date] = true;
       }
     });
   });
