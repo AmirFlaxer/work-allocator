@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { SavedSchedule, Station } from "@/types/employee";
+import { cellNames } from "@/lib/week";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -33,15 +34,17 @@ function buildReport(savedSchedules: SavedSchedule[], stations: Station[], month
     Object.entries(saved.schedule).forEach(([date, daySlots]) => {
       const d = new Date(date);
       if (d.getMonth() !== month || d.getFullYear() !== year) return;
-      Object.entries(daySlots).forEach(([stationId, empName]) => {
-        if (!empName) return;
+      Object.entries(daySlots).forEach(([stationId, cell]) => {
         const stationName = stationMap.get(Number(stationId)) ?? `עמדה ${stationId}`;
-        const entry: ShiftEntry = {
-          date: d.toLocaleDateString("he-IL", { day: "2-digit", month: "2-digit", year: "numeric" }),
-          stationName,
-        };
-        if (!empMap.has(empName)) empMap.set(empName, []);
-        empMap.get(empName)!.push(entry);
+        cellNames(cell).forEach(empName => {
+          if (!empName) return;
+          const entry: ShiftEntry = {
+            date: d.toLocaleDateString("he-IL", { day: "2-digit", month: "2-digit", year: "numeric" }),
+            stationName,
+          };
+          if (!empMap.has(empName)) empMap.set(empName, []);
+          empMap.get(empName)!.push(entry);
+        });
       });
     });
   });
@@ -69,10 +72,12 @@ function buildStationReport(savedSchedules: SavedSchedule[], stations: Station[]
     Object.entries(saved.schedule).forEach(([date, daySlots]) => {
       const d = new Date(date);
       if (d.getMonth() !== month || d.getFullYear() !== year) return;
-      Object.entries(daySlots).forEach(([stationId, empName]) => {
+      Object.entries(daySlots).forEach(([stationId, cell]) => {
         const id = Number(stationId);
-        total.set(id, (total.get(id) ?? 0) + 1);
-        if (empName) filled.set(id, (filled.get(id) ?? 0) + 1);
+        cellNames(cell).forEach(empName => {
+          total.set(id, (total.get(id) ?? 0) + 1);
+          if (empName) filled.set(id, (filled.get(id) ?? 0) + 1);
+        });
       });
     });
   });

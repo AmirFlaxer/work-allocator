@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Lock, LockOpen, Pencil, X, Eye, History } from "lucide-react";
 import { calculateWorkloads } from "@/lib/scheduler";
+import { getWeekDays, getHebrewDayLabels, cellNames, stationSlots, cellKey } from "@/lib/week";
 import { getEmployeeColor } from "@/lib/employeeColors";
 
 interface ScheduleTableProps {
@@ -18,19 +19,14 @@ interface ScheduleTableProps {
   stations: Station[];
   employees: Employee[];
   weekStart: Date;
+  activeDays: number[];
   lockedCells: Set<string>;
   auditLog: { [cellKey: string]: AuditEntry[] };
-  onCellEdit: (date: string, stationId: number, employeeName: string) => void;
-  onSwapCells: (date1: string, stationId1: number, date2: string, stationId2: number) => void;
-  onToggleLock: (date: string, stationId: number) => void;
+  onCellEdit: (date: string, stationId: number, slotIndex: number, employeeName: string) => void;
+  onSwapCells: (date1: string, stationId1: number, slot1: number, date2: string, stationId2: number, slot2: number) => void;
+  onToggleLock: (date: string, stationId: number, slotIndex: number) => void;
   cellColors?: boolean;
   darkMode?: boolean;
-}
-
-const HEBREW_DAYS = ["ראשון", "שני", "שלישי", "רביעי", "חמישי"];
-
-function cellKey(date: string, stationId: number) {
-  return `${date}__${stationId}`;
 }
 
 function badgeStyle(shifts: number): string {
@@ -41,26 +37,18 @@ function badgeStyle(shifts: number): string {
 }
 
 
-function getWeekDays(weekStart: Date): string[] {
-  return Array.from({ length: 5 }, (_, i) => {
-    const d = new Date(weekStart);
-    d.setDate(d.getDate() + i);
-    return d.toISOString().split("T")[0];
-  });
-}
-
 export function ScheduleTable({
-  schedule, stations, employees, weekStart,
+  schedule, stations, employees, weekStart, activeDays,
   lockedCells, auditLog, onCellEdit, onSwapCells, onToggleLock,
   cellColors = true,
   darkMode = false,
 }: ScheduleTableProps) {
-  const weekDays = getWeekDays(weekStart);
-  const hebrewDaysReversed = HEBREW_DAYS;
+  const weekDays = getWeekDays(weekStart, activeDays);
+  const hebrewDays = getHebrewDayLabels(activeDays);
   const workloads = calculateWorkloads(schedule);
 
   // Edit dialog
-  const [editCell, setEditCell] = useState<{ date: string; stationId: number } | null>(null);
+  const [editCell, setEditCell] = useState<{ date: string; stationId: number; slotIndex: number } | null>(null);
 
   // Employee detail dialog
   const [viewEmployee, setViewEmployee] = useState<string | null>(null);
@@ -69,38 +57,43 @@ export function ScheduleTable({
   const [auditCell, setAuditCell] = useState<string | null>(null);
 
   // Drag state
-  const dragSource = useRef<{ date: string; stationId: number; name: string } | null>(null);
+  const dragSource = useRef<{ date: string; stationId: number; slotIndex: number; name: string } | null>(null);
   const [dragOver, setDragOver] = useState<string | null>(null);
 
   const emptyPerDay = weekDays.map(date =>
-    Object.values(schedule[date] ?? {}).filter(v => v === "").length
+    stations.reduce((acc, st) => {
+      const names = cellNames(schedule[date]?.[st.id]);
+      let empty = 0;
+      for (let i = 0; i < stationSlots(st); i++) if (!names[i]) empty++;
+      return acc + empty;
+    }, 0)
   );
 
-  const handleCellClick = (date: string, stationId: number) => {
-    if (lockedCells.has(cellKey(date, stationId))) return;
-    setEditCell({ date, stationId });
+  const handleCellClick = (date: string, stationId: number, slotIndex: number) => {
+    if (lockedCells.has(cellKey(date, stationId, slotIndex))) return;
+    setEditCell({ date, stationId, slotIndex });
   };
 
   const handleSelectEmployee = (name: string) => {
     if (!editCell) return;
-    onCellEdit(editCell.date, editCell.stationId, name);
+    onCellEdit(editCell.date, editCell.stationId, editCell.slotIndex, name);
     setEditCell(null);
   };
 
   // Drag handlers
-  const handleDragStart = (date: string, stationId: number, name: string) => {
-    if (lockedCells.has(cellKey(date, stationId))) return;
-    dragSource.current = { date, stationId, name };
+  const handleDragStart = (date: string, stationId: number, slotIndex: number, name: string) => {
+    if (lockedCells.has(cellKey(date, stationId, slotIndex))) return;
+    dragSource.current = { date, stationId, slotIndex, name };
   };
 
-  const handleDrop = (targetDate: string, targetStationId: number) => {
+  const handleDrop = (targetDate: string, targetStationId: number, targetSlot: number) => {
     const src = dragSource.current;
     if (!src) return;
-    if (lockedCells.has(cellKey(targetDate, targetStationId))) return;
-    if (src.date === targetDate && src.stationId === targetStationId) return;
+    if (lockedCells.has(cellKey(targetDate, targetStationId, targetSlot))) return;
+    if (src.date === targetDate && src.stationId === targetStationId && src.slotIndex === targetSlot) return;
 
     // Swap atomically - no conflict check needed
-    onSwapCells(targetDate, targetStationId, src.date, src.stationId);
+    onSwapCells(targetDate, targetStationId, targetSlot, src.date, src.stationId, src.slotIndex);
     dragSource.current = null;
     setDragOver(null);
   };
@@ -109,9 +102,9 @@ export function ScheduleTable({
   const employeeWeekShifts = viewEmployee
     ? weekDays.flatMap(date =>
         stations
-          .filter(s => schedule[date]?.[s.id] === viewEmployee)
+          .filter(s => cellNames(schedule[date]?.[s.id]).includes(viewEmployee))
           .map(s => ({
-            day: hebrewDaysReversed[weekDays.indexOf(date)],
+            day: hebrewDays[weekDays.indexOf(date)],
             date,
             station: s.name,
           }))
@@ -131,7 +124,7 @@ export function ScheduleTable({
                     className="text-center font-semibold min-w-[150px] py-3"
                     style={{ borderBottomColor: 'hsl(var(--border-strong))' }}
                   >
-                    <div className="text-sm font-bold text-foreground">{hebrewDaysReversed[idx]}</div>
+                    <div className="text-sm font-bold text-foreground">{hebrewDays[idx]}</div>
                     <div className="text-xs font-normal text-muted-foreground mt-0.5">
                       {new Date(date).toLocaleDateString("he-IL", { day: "2-digit", month: "2-digit" })}
                     </div>
@@ -146,97 +139,103 @@ export function ScheduleTable({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {stations.map(station => (
-                <TableRow key={station.id} className="border-b border-border hover:bg-muted/30 transition-colors">
-                  {weekDays.map(date => {
-                    const name = schedule[date]?.[station.id] ?? "";
-                    const shifts = workloads[name] ?? 0;
-                    const key = cellKey(date, station.id);
-                    const locked = lockedCells.has(key);
-                    const isDragOver = dragOver === key;
+              {stations.flatMap(station => {
+                const slots = stationSlots(station);
+                return Array.from({ length: slots }, (_, slotIndex) => (
+                  <TableRow key={`${station.id}-${slotIndex}`} className="border-b border-border hover:bg-muted/30 transition-colors">
+                    {weekDays.map(date => {
+                      const name = cellNames(schedule[date]?.[station.id])[slotIndex] ?? "";
+                      const shifts = workloads[name] ?? 0;
+                      const key = cellKey(date, station.id, slotIndex);
+                      const locked = lockedCells.has(key);
+                      const isDragOver = dragOver === key;
 
-                    const empColor = name ? getEmployeeColor(name, darkMode) : null;
-                    const chipStyle = (cellColors && empColor)
-                      ? { background: empColor.bg, color: empColor.text, borderRight: `3px solid ${empColor.accent}` }
-                      : undefined;
+                      const empColor = name ? getEmployeeColor(name, darkMode) : null;
+                      const chipStyle = (cellColors && empColor)
+                        ? { background: empColor.bg, color: empColor.text, borderRight: `3px solid ${empColor.accent}` }
+                        : undefined;
 
-                    return (
-                      <TableCell
-                        key={date}
-                        className={`text-center py-2 px-2 transition-colors ${isDragOver ? "bg-primary/10" : ""}`}
-                        onDragOver={e => { e.preventDefault(); setDragOver(key); }}
-                        onDragLeave={() => setDragOver(null)}
-                        onDrop={() => handleDrop(date, station.id)}
-                      >
-                        <div className="flex items-center justify-center gap-1 group">
-                          {name ? (
-                            <div className="flex items-center gap-0.5">
-                              <Badge
-                                variant="secondary"
-                                draggable={!locked}
-                                onDragStart={() => handleDragStart(date, station.id, name)}
-                                onDragEnd={() => { dragSource.current = null; setDragOver(null); }}
-                                className={`font-medium text-xs px-2.5 py-1 rounded-md border select-none transition-all
-                                  ${locked ? "ring-2 ring-orange-300 dark:ring-orange-700 cursor-not-allowed" : "cursor-grab active:cursor-grabbing hover:scale-105"}
-                                  ${cellColors && empColor ? "" : badgeStyle(shifts)}
-                                `}
-                                style={chipStyle}
-                                title={`לחץ לעריכה${locked ? " (נעול)" : ""}`}
-                                onClick={() => !locked && handleCellClick(date, station.id)}
-                              >
-                                {locked && <Lock className="h-2.5 w-2.5 ml-1 inline" />}
-                                {!(cellColors && empColor) && (
-                                  <span className="inline-block w-1.5 h-1.5 rounded-full ml-1.5" style={{ background: getEmployeeColor(name, darkMode).accent }} />
-                                )}
-                                {name}
-                              </Badge>
+                      return (
+                        <TableCell
+                          key={date}
+                          className={`text-center py-2 px-2 transition-colors ${isDragOver ? "bg-primary/10" : ""}`}
+                          onDragOver={e => { e.preventDefault(); setDragOver(key); }}
+                          onDragLeave={() => setDragOver(null)}
+                          onDrop={() => handleDrop(date, station.id, slotIndex)}
+                        >
+                          <div className="flex items-center justify-center gap-1 group">
+                            {name ? (
+                              <div className="flex items-center gap-0.5">
+                                <Badge
+                                  variant="secondary"
+                                  draggable={!locked}
+                                  onDragStart={() => handleDragStart(date, station.id, slotIndex, name)}
+                                  onDragEnd={() => { dragSource.current = null; setDragOver(null); }}
+                                  className={`font-medium text-xs px-2.5 py-1 rounded-md border select-none transition-all
+                                    ${locked ? "ring-2 ring-orange-300 dark:ring-orange-700 cursor-not-allowed" : "cursor-grab active:cursor-grabbing hover:scale-105"}
+                                    ${cellColors && empColor ? "" : badgeStyle(shifts)}
+                                  `}
+                                  style={chipStyle}
+                                  title={`לחץ לעריכה${locked ? " (נעול)" : ""}`}
+                                  onClick={() => !locked && handleCellClick(date, station.id, slotIndex)}
+                                >
+                                  {locked && <Lock className="h-2.5 w-2.5 ml-1 inline" />}
+                                  {!(cellColors && empColor) && (
+                                    <span className="inline-block w-1.5 h-1.5 rounded-full ml-1.5" style={{ background: getEmployeeColor(name, darkMode).accent }} />
+                                  )}
+                                  {name}
+                                </Badge>
+                                <button
+                                  className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground"
+                                  title={`פרטי ${name}`}
+                                  onClick={() => setViewEmployee(name)}
+                                >
+                                  <Eye className="h-3 w-3" />
+                                </button>
+                              </div>
+                            ) : (
                               <button
-                                className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground"
-                                title={`פרטי ${name}`}
-                                onClick={() => setViewEmployee(name)}
+                                className="opacity-0 group-hover:opacity-60 transition-all text-xs cursor-pointer text-primary border border-dashed border-primary/40 rounded-full px-2.5 py-0.5 hover:opacity-100 hover:bg-primary/5 hover:border-primary/60"
+                                onClick={() => handleCellClick(date, station.id, slotIndex)}
                               >
-                                <Eye className="h-3 w-3" />
+                                + שבץ
                               </button>
-                            </div>
-                          ) : (
+                            )}
                             <button
-                              className="opacity-0 group-hover:opacity-60 transition-all text-xs cursor-pointer text-primary border border-dashed border-primary/40 rounded-full px-2.5 py-0.5 hover:opacity-100 hover:bg-primary/5 hover:border-primary/60"
-                              onClick={() => handleCellClick(date, station.id)}
+                              className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded hover:bg-muted"
+                              title={locked ? "בטל נעילה" : "נעל תא"}
+                              onClick={() => onToggleLock(date, station.id, slotIndex)}
                             >
-                              + שבץ
+                              {locked
+                                ? <Lock className="h-3 w-3 text-orange-400" />
+                                : <LockOpen className="h-3 w-3 text-muted-foreground" />
+                              }
                             </button>
-                          )}
-                          <button
-                            className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded hover:bg-muted"
-                            title={locked ? "בטל נעילה" : "נעל תא"}
-                            onClick={() => onToggleLock(date, station.id)}
-                          >
-                            {locked
-                              ? <Lock className="h-3 w-3 text-orange-400" />
-                              : <LockOpen className="h-3 w-3 text-muted-foreground" />
-                            }
-                          </button>
-                          {(auditLog[key]?.length ?? 0) > 0 && (
-                            <button
-                              className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground"
-                              title="היסטוריית שינויים"
-                              onClick={() => setAuditCell(key)}
-                            >
-                              <History className="h-3 w-3" />
-                            </button>
-                          )}
+                            {(auditLog[key]?.length ?? 0) > 0 && (
+                              <button
+                                className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground"
+                                title="היסטוריית שינויים"
+                                onClick={() => setAuditCell(key)}
+                              >
+                                <History className="h-3 w-3" />
+                              </button>
+                            )}
+                          </div>
+                        </TableCell>
+                      );
+                    })}
+                    {slotIndex === 0 && (
+                      <TableCell rowSpan={slots} className="font-medium text-right py-3 border-r border-border align-middle">
+                        <div className="flex items-center justify-end gap-2">
+                          <span className="text-sm font-bold">{station.name}</span>
+                          {slots > 1 && <Badge variant="secondary" className="text-xs">{slots} עובדים</Badge>}
+                          <Badge variant="outline" className="text-xs">{station.id}</Badge>
                         </div>
                       </TableCell>
-                    );
-                  })}
-                  <TableCell className="font-medium text-right py-3 border-r border-border">
-                    <div className="flex items-center justify-end gap-2">
-                      <span className="text-sm font-bold">{station.name}</span>
-                      <Badge variant="outline" className="text-xs">{station.id}</Badge>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
+                    )}
+                  </TableRow>
+                ));
+              })}
             </TableBody>
           </Table>
         </div>

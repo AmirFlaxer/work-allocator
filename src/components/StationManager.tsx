@@ -8,39 +8,45 @@ import { Trash2, Plus, Edit2, Check, X } from "lucide-react";
 
 interface StationManagerProps {
   stations: Station[];
-  onAdd: (name: string) => void;
-  onEdit: (id: number, name: string) => void;
+  onAdd: (name: string, requiredCount: number) => void;
+  onEdit: (id: number, name: string, requiredCount: number) => void;
   onDelete: (id: number) => void;
 }
 
 export function StationManager({ stations, onAdd, onEdit, onDelete }: StationManagerProps) {
   const [newStationName, setNewStationName] = useState("");
+  const [newStationCount, setNewStationCount] = useState(1);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editingName, setEditingName] = useState("");
+  const [editingCount, setEditingCount] = useState(1);
 
   const handleAdd = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newStationName.trim()) return;
-    onAdd(newStationName.trim());
+    onAdd(newStationName.trim(), Math.max(1, newStationCount));
     setNewStationName("");
+    setNewStationCount(1);
   };
 
   const startEdit = (station: Station) => {
     setEditingId(station.id);
     setEditingName(station.name);
+    setEditingCount(station.requiredCount ?? 1);
   };
 
   const saveEdit = () => {
     if (editingId !== null && editingName.trim()) {
-      onEdit(editingId, editingName.trim());
+      onEdit(editingId, editingName.trim(), Math.max(1, editingCount));
       setEditingId(null);
       setEditingName("");
+      setEditingCount(1);
     }
   };
 
   const cancelEdit = () => {
     setEditingId(null);
     setEditingName("");
+    setEditingCount(1);
   };
 
   return (
@@ -50,6 +56,15 @@ export function StationManager({ stations, onAdd, onEdit, onDelete }: StationMan
           value={newStationName}
           onChange={(e) => setNewStationName(e.target.value)}
           placeholder="שם העמדה"
+        />
+        <Input
+          type="number"
+          min={1}
+          value={newStationCount}
+          onChange={(e) => setNewStationCount(Number(e.target.value) || 1)}
+          className="w-24"
+          title="כמה עובדים נדרשים בו זמנית"
+          placeholder="עובדים"
         />
         <Button type="submit">
           <Plus className="h-4 w-4 ml-2" />
@@ -79,6 +94,15 @@ export function StationManager({ stations, onAdd, onEdit, onDelete }: StationMan
                         className="max-w-xs"
                         autoFocus
                       />
+                      <Input
+                        type="number"
+                        min={1}
+                        value={editingCount}
+                        onChange={(e) => setEditingCount(Number(e.target.value) || 1)}
+                        className="w-24"
+                        title="כמה עובדים נדרשים בו זמנית"
+                        placeholder="עובדים"
+                      />
                     </div>
                     <div className="flex gap-2">
                       <Button
@@ -102,6 +126,9 @@ export function StationManager({ stations, onAdd, onEdit, onDelete }: StationMan
                     <div className="flex items-center gap-3">
                       <Badge variant="outline">{station.id}</Badge>
                       <span className="font-medium">{station.name}</span>
+                      {(station.requiredCount ?? 1) > 1 && (
+                        <Badge variant="secondary" className="text-xs">{station.requiredCount} עובדים</Badge>
+                      )}
                     </div>
                     <div className="flex gap-2">
                       <Button
