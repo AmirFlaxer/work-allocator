@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Star, Pencil, Trash2, Layers } from "lucide-react";
 import { getEmployeeColor } from "@/lib/employeeColors";
-import { cellNames } from "@/lib/week";
+import { cellNames, dailyShiftCap } from "@/lib/week";
 
 interface EmployeeListProps {
   employees: Employee[];
@@ -154,11 +154,11 @@ export function EmployeeList({
               )}
 
               {/* Footer */}
-              {employee.canWorkMultipleStations && (
+              {dailyShiftCap(employee) > 1 && (
                 <div className="mt-2.5 pt-2 border-t border-border/50">
                   <Badge variant="outline" className="text-xs gap-1 rounded-md">
                     <Layers className="h-3 w-3" />
-                    יכול לעבוד במספר עמדות
+                    עד {dailyShiftCap(employee)} שיבוצים ביום
                   </Badge>
                 </div>
               )}

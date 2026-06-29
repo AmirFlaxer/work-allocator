@@ -7,7 +7,9 @@ export interface Employee {
   maxWeeklyShifts?: number;
   unavailableDays?: string[];
   specificRequests?: { date: string; stationId: number }[];
+  /** @deprecated use maxDailyShifts. Kept for backward-compat reads of old data. */
   canWorkMultipleStations?: boolean;
+  maxDailyShifts?: number;
   notes?: string;
 }
 

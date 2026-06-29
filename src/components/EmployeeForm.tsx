@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Employee, Station } from "@/types/employee";
+import { dailyShiftCap } from "@/lib/week";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,8 +22,8 @@ export function EmployeeForm({ employee, stations, onSave, onCancel }: EmployeeF
   const [maxWeeklyShifts, setMaxWeeklyShifts] = useState<number | "">(
     employee?.maxWeeklyShifts ?? ""
   );
-  const [canWorkMultipleStations, setCanWorkMultipleStations] = useState(
-    employee?.canWorkMultipleStations ?? false
+  const [maxDailyShifts, setMaxDailyShifts] = useState<number>(
+    employee ? dailyShiftCap(employee) : 1
   );
   const [availableStations, setAvailableStations] = useState<number[]>(
     employee?.availableStations || stations.map(s => s.id)
@@ -53,7 +54,7 @@ export function EmployeeForm({ employee, stations, onSave, onCancel }: EmployeeF
       minWeeklyShifts,
       maxWeeklyShifts: maxWeeklyShifts === "" ? undefined : maxWeeklyShifts,
       availableStations: availableStations.sort((a, b) => a - b),
-      canWorkMultipleStations,
+      maxDailyShifts: Math.max(1, maxDailyShifts),
       notes: notes.trim() || undefined,
     });
   };
@@ -86,16 +87,17 @@ export function EmployeeForm({ employee, stations, onSave, onCancel }: EmployeeF
           </Label>
         </div>
 
-        {/* Multiple stations */}
-        <div className="flex items-center space-x-2 space-x-reverse">
-          <Checkbox
-            id="canWorkMultiple"
-            checked={canWorkMultipleStations}
-            onCheckedChange={checked => setCanWorkMultipleStations(checked as boolean)}
+        {/* Max daily shifts */}
+        <div className="space-y-2">
+          <Label htmlFor="maxDailyShifts">מספר שיבוצים ביום</Label>
+          <Input
+            id="maxDailyShifts"
+            type="number"
+            min={1}
+            value={maxDailyShifts}
+            onChange={e => setMaxDailyShifts(parseInt(e.target.value) || 1)}
+            className="w-32"
           />
-          <Label htmlFor="canWorkMultiple" className="cursor-pointer">
-            אפשר שיבוץ למספר עמדות ביום
-          </Label>
         </div>
 
         {/* Min / Max */}
