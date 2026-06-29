@@ -228,7 +228,7 @@ export function ScheduleTable({
                       <TableCell rowSpan={slots} className="font-medium text-right py-3 border-r border-border align-middle">
                         <div className="flex items-center justify-end gap-2">
                           <span className="text-sm font-bold">{station.name}</span>
-                          {slots > 1 && <Badge variant="secondary" className="text-xs">{slots} עובדים</Badge>}
+                          {slots > 1 && <Badge variant="secondary" className="text-xs">עובדים {slots}</Badge>}
                           <Badge variant="outline" className="text-xs">{station.id}</Badge>
                         </div>
                       </TableCell>
