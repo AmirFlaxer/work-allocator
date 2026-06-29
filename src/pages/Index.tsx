@@ -292,14 +292,14 @@ const Index = () => {
   };
 
   // ── Station handlers ───────────────────────────────────
-  const handleAddStation = (name: string) => {
+  const handleAddStation = (name: string, requiredCount: number) => {
     const newId = stations.length > 0 ? Math.max(...stations.map(s => s.id)) + 1 : 1;
-    setStations(prev => [...prev, { id: newId, name }]);
+    setStations(prev => [...prev, { id: newId, name, requiredCount }]);
     toast({ title: "העמדה נוספה" });
   };
 
-  const handleEditStation = (id: number, name: string) => {
-    setStations(prev => prev.map(s => s.id === id ? { ...s, name } : s));
+  const handleEditStation = (id: number, name: string, requiredCount: number) => {
+    setStations(prev => prev.map(s => s.id === id ? { ...s, name, requiredCount } : s));
     toast({ title: "העמדה עודכנה" });
   };
 
