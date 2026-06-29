@@ -26,3 +26,7 @@ dist-ssr
 
 # Superpowers brainstorm visual companion
 .superpowers/
+
+# Local tool artifacts
+.claude/
+supabase/.temp/
