@@ -139,97 +139,103 @@ export function ScheduleTable({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {stations.map(station => (
-                <TableRow key={station.id} className="border-b border-border hover:bg-muted/30 transition-colors">
-                  {weekDays.map(date => {
-                    const name = cellNames(schedule[date]?.[station.id])[0] ?? "";
-                    const shifts = workloads[name] ?? 0;
-                    const key = cellKey(date, station.id, 0);
-                    const locked = lockedCells.has(key);
-                    const isDragOver = dragOver === key;
+              {stations.flatMap(station => {
+                const slots = stationSlots(station);
+                return Array.from({ length: slots }, (_, slotIndex) => (
+                  <TableRow key={`${station.id}-${slotIndex}`} className="border-b border-border hover:bg-muted/30 transition-colors">
+                    {weekDays.map(date => {
+                      const name = cellNames(schedule[date]?.[station.id])[slotIndex] ?? "";
+                      const shifts = workloads[name] ?? 0;
+                      const key = cellKey(date, station.id, slotIndex);
+                      const locked = lockedCells.has(key);
+                      const isDragOver = dragOver === key;
 
-                    const empColor = name ? getEmployeeColor(name, darkMode) : null;
-                    const chipStyle = (cellColors && empColor)
-                      ? { background: empColor.bg, color: empColor.text, borderRight: `3px solid ${empColor.accent}` }
-                      : undefined;
+                      const empColor = name ? getEmployeeColor(name, darkMode) : null;
+                      const chipStyle = (cellColors && empColor)
+                        ? { background: empColor.bg, color: empColor.text, borderRight: `3px solid ${empColor.accent}` }
+                        : undefined;
 
-                    return (
-                      <TableCell
-                        key={date}
-                        className={`text-center py-2 px-2 transition-colors ${isDragOver ? "bg-primary/10" : ""}`}
-                        onDragOver={e => { e.preventDefault(); setDragOver(key); }}
-                        onDragLeave={() => setDragOver(null)}
-                        onDrop={() => handleDrop(date, station.id, 0)}
-                      >
-                        <div className="flex items-center justify-center gap-1 group">
-                          {name ? (
-                            <div className="flex items-center gap-0.5">
-                              <Badge
-                                variant="secondary"
-                                draggable={!locked}
-                                onDragStart={() => handleDragStart(date, station.id, 0, name)}
-                                onDragEnd={() => { dragSource.current = null; setDragOver(null); }}
-                                className={`font-medium text-xs px-2.5 py-1 rounded-md border select-none transition-all
-                                  ${locked ? "ring-2 ring-orange-300 dark:ring-orange-700 cursor-not-allowed" : "cursor-grab active:cursor-grabbing hover:scale-105"}
-                                  ${cellColors && empColor ? "" : badgeStyle(shifts)}
-                                `}
-                                style={chipStyle}
-                                title={`לחץ לעריכה${locked ? " (נעול)" : ""}`}
-                                onClick={() => !locked && handleCellClick(date, station.id, 0)}
-                              >
-                                {locked && <Lock className="h-2.5 w-2.5 ml-1 inline" />}
-                                {!(cellColors && empColor) && (
-                                  <span className="inline-block w-1.5 h-1.5 rounded-full ml-1.5" style={{ background: getEmployeeColor(name, darkMode).accent }} />
-                                )}
-                                {name}
-                              </Badge>
+                      return (
+                        <TableCell
+                          key={date}
+                          className={`text-center py-2 px-2 transition-colors ${isDragOver ? "bg-primary/10" : ""}`}
+                          onDragOver={e => { e.preventDefault(); setDragOver(key); }}
+                          onDragLeave={() => setDragOver(null)}
+                          onDrop={() => handleDrop(date, station.id, slotIndex)}
+                        >
+                          <div className="flex items-center justify-center gap-1 group">
+                            {name ? (
+                              <div className="flex items-center gap-0.5">
+                                <Badge
+                                  variant="secondary"
+                                  draggable={!locked}
+                                  onDragStart={() => handleDragStart(date, station.id, slotIndex, name)}
+                                  onDragEnd={() => { dragSource.current = null; setDragOver(null); }}
+                                  className={`font-medium text-xs px-2.5 py-1 rounded-md border select-none transition-all
+                                    ${locked ? "ring-2 ring-orange-300 dark:ring-orange-700 cursor-not-allowed" : "cursor-grab active:cursor-grabbing hover:scale-105"}
+                                    ${cellColors && empColor ? "" : badgeStyle(shifts)}
+                                  `}
+                                  style={chipStyle}
+                                  title={`לחץ לעריכה${locked ? " (נעול)" : ""}`}
+                                  onClick={() => !locked && handleCellClick(date, station.id, slotIndex)}
+                                >
+                                  {locked && <Lock className="h-2.5 w-2.5 ml-1 inline" />}
+                                  {!(cellColors && empColor) && (
+                                    <span className="inline-block w-1.5 h-1.5 rounded-full ml-1.5" style={{ background: getEmployeeColor(name, darkMode).accent }} />
+                                  )}
+                                  {name}
+                                </Badge>
+                                <button
+                                  className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground"
+                                  title={`פרטי ${name}`}
+                                  onClick={() => setViewEmployee(name)}
+                                >
+                                  <Eye className="h-3 w-3" />
+                                </button>
+                              </div>
+                            ) : (
                               <button
-                                className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground"
-                                title={`פרטי ${name}`}
-                                onClick={() => setViewEmployee(name)}
+                                className="opacity-0 group-hover:opacity-60 transition-all text-xs cursor-pointer text-primary border border-dashed border-primary/40 rounded-full px-2.5 py-0.5 hover:opacity-100 hover:bg-primary/5 hover:border-primary/60"
+                                onClick={() => handleCellClick(date, station.id, slotIndex)}
                               >
-                                <Eye className="h-3 w-3" />
+                                + שבץ
                               </button>
-                            </div>
-                          ) : (
+                            )}
                             <button
-                              className="opacity-0 group-hover:opacity-60 transition-all text-xs cursor-pointer text-primary border border-dashed border-primary/40 rounded-full px-2.5 py-0.5 hover:opacity-100 hover:bg-primary/5 hover:border-primary/60"
-                              onClick={() => handleCellClick(date, station.id, 0)}
+                              className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded hover:bg-muted"
+                              title={locked ? "בטל נעילה" : "נעל תא"}
+                              onClick={() => onToggleLock(date, station.id, slotIndex)}
                             >
-                              + שבץ
+                              {locked
+                                ? <Lock className="h-3 w-3 text-orange-400" />
+                                : <LockOpen className="h-3 w-3 text-muted-foreground" />
+                              }
                             </button>
-                          )}
-                          <button
-                            className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded hover:bg-muted"
-                            title={locked ? "בטל נעילה" : "נעל תא"}
-                            onClick={() => onToggleLock(date, station.id, 0)}
-                          >
-                            {locked
-                              ? <Lock className="h-3 w-3 text-orange-400" />
-                              : <LockOpen className="h-3 w-3 text-muted-foreground" />
-                            }
-                          </button>
-                          {(auditLog[key]?.length ?? 0) > 0 && (
-                            <button
-                              className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground"
-                              title="היסטוריית שינויים"
-                              onClick={() => setAuditCell(key)}
-                            >
-                              <History className="h-3 w-3" />
-                            </button>
-                          )}
+                            {(auditLog[key]?.length ?? 0) > 0 && (
+                              <button
+                                className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground"
+                                title="היסטוריית שינויים"
+                                onClick={() => setAuditCell(key)}
+                              >
+                                <History className="h-3 w-3" />
+                              </button>
+                            )}
+                          </div>
+                        </TableCell>
+                      );
+                    })}
+                    {slotIndex === 0 && (
+                      <TableCell rowSpan={slots} className="font-medium text-right py-3 border-r border-border align-middle">
+                        <div className="flex items-center justify-end gap-2">
+                          <span className="text-sm font-bold">{station.name}</span>
+                          {slots > 1 && <Badge variant="secondary" className="text-xs">{slots} עובדים</Badge>}
+                          <Badge variant="outline" className="text-xs">{station.id}</Badge>
                         </div>
                       </TableCell>
-                    );
-                  })}
-                  <TableCell className="font-medium text-right py-3 border-r border-border">
-                    <div className="flex items-center justify-end gap-2">
-                      <span className="text-sm font-bold">{station.name}</span>
-                      <Badge variant="outline" className="text-xs">{station.id}</Badge>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
+                    )}
+                  </TableRow>
+                ));
+              })}
             </TableBody>
           </Table>
         </div>
