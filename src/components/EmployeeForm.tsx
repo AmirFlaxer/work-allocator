@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Employee, Station } from "@/types/employee";
+import { dailyShiftCap } from "@/lib/week";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,7 +23,7 @@ export function EmployeeForm({ employee, stations, onSave, onCancel }: EmployeeF
     employee?.maxWeeklyShifts ?? ""
   );
   const [maxDailyShifts, setMaxDailyShifts] = useState<number>(
-    employee?.maxDailyShifts ?? (employee?.canWorkMultipleStations ? 2 : 1)
+    employee ? dailyShiftCap(employee) : 1
   );
   const [availableStations, setAvailableStations] = useState<number[]>(
     employee?.availableStations || stations.map(s => s.id)
