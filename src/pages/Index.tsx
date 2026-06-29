@@ -18,6 +18,8 @@ import { MonthlyReport } from "@/components/MonthlyReport";
 import { ContactDeveloper } from "@/components/ContactDeveloper";
 import { AboutDialog } from "@/components/AboutDialog";
 import { generateWeeklySchedule } from "@/lib/scheduler";
+import { getWeekDays, getHebrewDayLabels, DEFAULT_ACTIVE_DAYS, ALL_HEBREW_DAYS } from "@/lib/week";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Plus, Calendar, Users, MapPin, Save, FolderOpen, Trash2,
   ChevronLeft, ChevronRight, Image, FileSpreadsheet, Eye, EyeOff,
@@ -37,14 +39,6 @@ function getNextSunday(date: Date): Date {
   return result;
 }
 
-function getWeekDays(weekStart: Date): string[] {
-  return Array.from({ length: 5 }, (_, i) => {
-    const d = new Date(weekStart);
-    d.setDate(d.getDate() + i);
-    return d.toISOString().split("T")[0];
-  });
-}
-
 function getWeekNumber(date: Date): number {
   const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
   const dayNum = (d.getUTCDay() + 6) % 7;
@@ -55,11 +49,10 @@ function getWeekNumber(date: Date): number {
   return 1 + Math.round((d.getTime() - firstThursday.getTime()) / (7 * 24 * 3600 * 1000));
 }
 
-function formatWeekRange(weekStart: Date): string {
-  const end = new Date(weekStart);
-  end.setDate(end.getDate() + 4);
-  const s = weekStart.toLocaleDateString("he-IL", { weekday: "long", day: "2-digit", month: "long" });
-  const e = end.toLocaleDateString("he-IL", { weekday: "long", day: "2-digit", month: "long", year: "numeric" });
+function formatWeekRange(weekStart: Date, activeDays: number[]): string {
+  const days = getWeekDays(weekStart, activeDays);
+  const s = new Date(days[0]).toLocaleDateString("he-IL", { weekday: "long", day: "2-digit", month: "long" });
+  const e = new Date(days[days.length - 1]).toLocaleDateString("he-IL", { weekday: "long", day: "2-digit", month: "long", year: "numeric" });
   return `${s} · ${e}`;
 }
 
@@ -87,6 +80,14 @@ const Index = () => {
   const [cellColors, setCellColors] = useState<boolean>(() => {
     const saved = localStorage.getItem("cellColors");
     return saved === null ? true : saved === "true";
+  });
+
+  // ── Active work days ────────────────────────────────────
+  const [activeDays, setActiveDays] = useState<number[]>(() => {
+    try {
+      const saved = localStorage.getItem("activeDays");
+      return saved ? JSON.parse(saved) : DEFAULT_ACTIVE_DAYS;
+    } catch { return DEFAULT_ACTIVE_DAYS; }
   });
 
   // ── Employees ──────────────────────────────────────────
@@ -202,6 +203,7 @@ const Index = () => {
   useEffect(() => { localStorage.setItem("auditLog", JSON.stringify(auditLog)); syncToSupabase("auditLog", auditLog); }, [auditLog, syncToSupabase]);
   useEffect(() => { localStorage.setItem("scheduleTemplates", JSON.stringify(templates)); syncToSupabase("scheduleTemplates", templates); }, [templates, syncToSupabase]);
   useEffect(() => { localStorage.setItem("cellColors", String(cellColors)); syncToSupabase("cellColors", cellColors); }, [cellColors, syncToSupabase]);
+  useEffect(() => { localStorage.setItem("activeDays", JSON.stringify(activeDays)); syncToSupabase("activeDays", activeDays); }, [activeDays, syncToSupabase]);
 
   // ── Load from Supabase on mount ────────────────────────
   useEffect(() => {
@@ -210,12 +212,13 @@ const Index = () => {
       if (error || !data) { setSyncStatus("error"); return; }
       isRemoteUpdate.current = true;
       const store = Object.fromEntries(data.map(r => [r.key, r.value]));
-      const LOCAL_KEYS = ["employees","stations","schedule","weekStart","savedSchedules","scheduleTemplates","lockedCells","auditLog","cellColors"];
+      const LOCAL_KEYS = ["employees","stations","schedule","weekStart","savedSchedules","scheduleTemplates","lockedCells","auditLog","cellColors","activeDays"];
       if (data.length === 0) {
         LOCAL_KEYS.forEach(k => localStorage.removeItem(k));
         setEmployees([]); setStations([]); setSchedule(null);
         setSavedSchedules([]); setTemplates([]); setLockedCells(new Set()); setAuditLog({});
         setCellColors(true);
+        setActiveDays(DEFAULT_ACTIVE_DAYS);
         setWeekStart(getNextSunday(new Date()));
       } else {
         if (store.employees)      setEmployees(store.employees as Employee[]);
@@ -232,6 +235,7 @@ const Index = () => {
         if (store.lockedCells)    setLockedCells(new Set(store.lockedCells as string[]));
         if (store.auditLog)       setAuditLog(store.auditLog as { [k: string]: AuditEntry[] });
         if (store.cellColors !== undefined) setCellColors(store.cellColors as boolean);
+        if (store.activeDays) setActiveDays(store.activeDays as number[]);
       }
       hasLoaded.current = true;
       setTimeout(() => { isRemoteUpdate.current = false; setSyncStatus("synced"); }, 200);
@@ -258,6 +262,7 @@ const Index = () => {
         else if (key === "lockedCells")  setLockedCells(new Set(value as string[]));
         else if (key === "auditLog")     setAuditLog(value as { [k: string]: AuditEntry[] });
         else if (key === "cellColors") setCellColors(value as boolean);
+        else if (key === "activeDays") setActiveDays(value as number[]);
         setTimeout(() => { isRemoteUpdate.current = false; setSyncStatus("synced"); }, 200);
         toast({ title: "השיבוץ עודכן ממכשיר אחר" });
       })
@@ -319,7 +324,7 @@ const Index = () => {
     if (keepLocked && schedule) {
       // Start from current locked cells
       baseSchedule = {};
-      const weekDays = getWeekDays(weekStart);
+      const weekDays = getWeekDays(weekStart, activeDays);
       weekDays.forEach(date => {
         baseSchedule![date] = {};
         stations.forEach(st => {
@@ -329,7 +334,7 @@ const Index = () => {
       });
     }
 
-    const newSchedule = generateWeeklySchedule(employees, stations, weekStart, baseSchedule ?? undefined, lockedCells);
+    const newSchedule = generateWeeklySchedule(employees, stations, weekStart, activeDays, baseSchedule ?? undefined, lockedCells);
     if (schedule) pushHistory(schedule);
     setSchedule(newSchedule);
     toast({ title: "השיבוץ נוצר!" });
@@ -349,8 +354,8 @@ const Index = () => {
       toast({ title: "אין שיבוץ קיים לשכפל", variant: "destructive" });
       return;
     }
-    const currentDays = getWeekDays(weekStart);
-    const prevDays = getWeekDays(new Date(weekStart.getTime() - 7 * 24 * 60 * 60 * 1000));
+    const currentDays = getWeekDays(weekStart, activeDays);
+    const prevDays = getWeekDays(new Date(weekStart.getTime() - 7 * 24 * 60 * 60 * 1000), activeDays);
 
     const cloned: WeeklySchedule = {};
     currentDays.forEach((date, i) => {
@@ -412,7 +417,7 @@ const Index = () => {
 
   const handleLoadTemplate = (template: ScheduleTemplate) => {
     const templateDays = Object.keys(template.schedule).sort();
-    const currentDays = getWeekDays(weekStart);
+    const currentDays = getWeekDays(weekStart, activeDays);
     const remapped: WeeklySchedule = {};
     currentDays.forEach((date, i) => {
       remapped[date] = { ...(template.schedule[templateDays[i]] ?? {}) };
@@ -499,7 +504,7 @@ const Index = () => {
       // Block exceeding maxWeeklyShifts
       const employee = employees.find(e => e.name === employeeName);
       if (employee?.maxWeeklyShifts != null) {
-        const weekDays = getWeekDays(weekStart);
+        const weekDays = getWeekDays(weekStart, activeDays);
         const currentShifts = weekDays.filter(
           d => d !== date && Object.values(schedule[d] ?? {}).includes(employeeName)
         ).length;
@@ -558,9 +563,9 @@ const Index = () => {
   // ── Export ─────────────────────────────────────────────
   const handleExportToExcel = () => {
     if (!schedule) return;
-    const HEBREW_DAYS = ["ראשון", "שני", "שלישי", "רביעי", "חמישי"];
-    const weekDays = getWeekDays(weekStart);
-    const headers = ["עמדה", ...HEBREW_DAYS.map((day, idx) =>
+    const hebrewDays = getHebrewDayLabels(activeDays);
+    const weekDays = getWeekDays(weekStart, activeDays);
+    const headers = ["עמדה", ...hebrewDays.map((day, idx) =>
       `${day} (${new Date(weekDays[idx]).toLocaleDateString("he-IL", { day: "2-digit", month: "2-digit" })})`
     )];
     const data = stations.map(station => [
@@ -599,14 +604,14 @@ const Index = () => {
   // ── Workload & coverage computations ──────────────────
   const workloadData = useMemo(() => {
     if (!schedule) return [];
-    const days = getWeekDays(weekStart);
+    const days = getWeekDays(weekStart, activeDays);
     return employees.map(emp => {
       const shifts = days.filter(d =>
         Object.values(schedule[d] ?? {}).includes(emp.name)
       ).length;
       return { emp, shifts };
     });
-  }, [schedule, employees, weekStart]);
+  }, [schedule, employees, weekStart, activeDays]);
 
   const underScheduled = workloadData.filter(w => w.shifts < w.emp.minWeeklyShifts);
 
@@ -697,6 +702,31 @@ const Index = () => {
               </div>
               <h2 className="text-xl font-extrabold">ניהול עמדות</h2>
             </div>
+            <Card className="p-4 space-y-3">
+              <div>
+                <h3 className="font-semibold">ימי עבודה</h3>
+                <p className="text-sm text-muted-foreground">בחר אילו ימים נחשבים שבוע עבודה (ברירת מחדל: ראשון - חמישי)</p>
+              </div>
+              <div className="flex flex-wrap gap-3">
+                {ALL_HEBREW_DAYS.map((label, idx) => {
+                  const checked = activeDays.includes(idx);
+                  return (
+                    <label key={idx} className="flex items-center gap-2 cursor-pointer">
+                      <Checkbox
+                        checked={checked}
+                        onCheckedChange={() => {
+                          setActiveDays(prev => {
+                            const next = prev.includes(idx) ? prev.filter(d => d !== idx) : [...prev, idx];
+                            return next.length === 0 ? prev : next.sort((a, b) => a - b);
+                          });
+                        }}
+                      />
+                      <span className="text-sm">{label}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            </Card>
             <StationManager stations={stations} onAdd={handleAddStation} onEdit={handleEditStation} onDelete={handleDeleteStation} />
           </TabsContent>
 
@@ -768,6 +798,7 @@ const Index = () => {
               employees={employees}
               stations={stations}
               weekStart={weekStart}
+              activeDays={activeDays}
               onUpdate={handleUpdateEmployee}
             />
           </TabsContent>
@@ -785,7 +816,7 @@ const Index = () => {
                 </div>
                 <h1 className="masthead-title text-4xl sm:text-5xl text-foreground">שיבוץ שבועי</h1>
                 <p className="text-muted-foreground mt-2 font-medium">
-                  {formatWeekRange(weekStart)}
+                  {formatWeekRange(weekStart, activeDays)}
                 </p>
                 <div className="flex items-center gap-1.5 mt-2">
                   <span className="text-xs px-1.5 py-0.5 rounded-md bg-primary/10 text-primary font-medium">{employees.length} עובדים</span>
@@ -960,6 +991,7 @@ const Index = () => {
                     stations={stations}
                     employees={employees}
                     weekStart={weekStart}
+                    activeDays={activeDays}
                     lockedCells={lockedCells}
                     auditLog={auditLog}
                     onCellEdit={handleCellEdit}
@@ -1012,6 +1044,7 @@ const Index = () => {
                     previousSchedule={previousSchedule}
                     stations={stations}
                     currentWeekStart={weekStart}
+                    activeDays={activeDays}
                   />
                 )}
               </>

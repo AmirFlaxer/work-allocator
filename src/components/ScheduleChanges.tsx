@@ -2,12 +2,14 @@ import { WeeklySchedule, Station } from "@/types/employee";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ArrowRight, TrendingUp } from "lucide-react";
+import { getWeekDays } from "@/lib/week";
 
 interface ScheduleChangesProps {
   currentSchedule: WeeklySchedule;
   previousSchedule: WeeklySchedule | null;
   stations: Station[];
   currentWeekStart: Date;
+  activeDays: number[];
 }
 
 interface Change {
@@ -17,14 +19,14 @@ interface Change {
   currentEmployee: string;
 }
 
-export function ScheduleChanges({ currentSchedule, previousSchedule, stations, currentWeekStart }: ScheduleChangesProps) {
+export function ScheduleChanges({ currentSchedule, previousSchedule, stations, currentWeekStart, activeDays }: ScheduleChangesProps) {
   if (!previousSchedule) {
     return null;
   }
 
   const changes: Change[] = [];
 
-  Object.keys(currentSchedule).forEach((date) => {
+  getWeekDays(currentWeekStart, activeDays).forEach((date) => {
     stations.forEach((station) => {
       const currentEmp = currentSchedule[date]?.[station.id] || "";
       const previousEmp = previousSchedule[date]?.[station.id] || "";

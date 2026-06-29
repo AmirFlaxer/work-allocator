@@ -1,4 +1,5 @@
 import { Employee, Station, WeeklySchedule } from "@/types/employee";
+import { getWeekDays } from "@/lib/week";
 
 function cellKey(date: string, stationId: number) {
   return `${date}__${stationId}`;
@@ -8,11 +9,12 @@ export function generateWeeklySchedule(
   employees: Employee[],
   stations: Station[],
   weekStart: Date,
+  activeDays: number[],
   baseSchedule?: WeeklySchedule,
   lockedCells?: Set<string>
 ): WeeklySchedule {
   const schedule: WeeklySchedule = {};
-  const weekDays = getWeekDays(weekStart);
+  const weekDays = getWeekDays(weekStart, activeDays);
 
   // Initialize - preserve locked cells from baseSchedule
   weekDays.forEach(date => {
@@ -157,14 +159,6 @@ export function generateWeeklySchedule(
   });
 
   return schedule;
-}
-
-export function getWeekDays(weekStart: Date): string[] {
-  return Array.from({ length: 5 }, (_, i) => {
-    const date = new Date(weekStart);
-    date.setDate(date.getDate() + i);
-    return date.toISOString().split("T")[0];
-  });
 }
 
 export function countFilledSlots(schedule: WeeklySchedule): number {

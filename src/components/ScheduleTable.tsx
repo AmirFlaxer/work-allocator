@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Lock, LockOpen, Pencil, X, Eye, History } from "lucide-react";
 import { calculateWorkloads } from "@/lib/scheduler";
+import { getWeekDays, getHebrewDayLabels } from "@/lib/week";
 import { getEmployeeColor } from "@/lib/employeeColors";
 
 interface ScheduleTableProps {
@@ -18,6 +19,7 @@ interface ScheduleTableProps {
   stations: Station[];
   employees: Employee[];
   weekStart: Date;
+  activeDays: number[];
   lockedCells: Set<string>;
   auditLog: { [cellKey: string]: AuditEntry[] };
   onCellEdit: (date: string, stationId: number, employeeName: string) => void;
@@ -26,8 +28,6 @@ interface ScheduleTableProps {
   cellColors?: boolean;
   darkMode?: boolean;
 }
-
-const HEBREW_DAYS = ["ראשון", "שני", "שלישי", "רביעי", "חמישי"];
 
 function cellKey(date: string, stationId: number) {
   return `${date}__${stationId}`;
@@ -41,22 +41,14 @@ function badgeStyle(shifts: number): string {
 }
 
 
-function getWeekDays(weekStart: Date): string[] {
-  return Array.from({ length: 5 }, (_, i) => {
-    const d = new Date(weekStart);
-    d.setDate(d.getDate() + i);
-    return d.toISOString().split("T")[0];
-  });
-}
-
 export function ScheduleTable({
-  schedule, stations, employees, weekStart,
+  schedule, stations, employees, weekStart, activeDays,
   lockedCells, auditLog, onCellEdit, onSwapCells, onToggleLock,
   cellColors = true,
   darkMode = false,
 }: ScheduleTableProps) {
-  const weekDays = getWeekDays(weekStart);
-  const hebrewDaysReversed = HEBREW_DAYS;
+  const weekDays = getWeekDays(weekStart, activeDays);
+  const hebrewDays = getHebrewDayLabels(activeDays);
   const workloads = calculateWorkloads(schedule);
 
   // Edit dialog
@@ -111,7 +103,7 @@ export function ScheduleTable({
         stations
           .filter(s => schedule[date]?.[s.id] === viewEmployee)
           .map(s => ({
-            day: hebrewDaysReversed[weekDays.indexOf(date)],
+            day: hebrewDays[weekDays.indexOf(date)],
             date,
             station: s.name,
           }))
@@ -131,7 +123,7 @@ export function ScheduleTable({
                     className="text-center font-semibold min-w-[150px] py-3"
                     style={{ borderBottomColor: 'hsl(var(--border-strong))' }}
                   >
-                    <div className="text-sm font-bold text-foreground">{hebrewDaysReversed[idx]}</div>
+                    <div className="text-sm font-bold text-foreground">{hebrewDays[idx]}</div>
                     <div className="text-xs font-normal text-muted-foreground mt-0.5">
                       {new Date(date).toLocaleDateString("he-IL", { day: "2-digit", month: "2-digit" })}
                     </div>

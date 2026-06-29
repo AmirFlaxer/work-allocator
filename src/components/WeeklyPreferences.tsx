@@ -7,27 +7,20 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Calendar, X } from "lucide-react";
+import { getWeekDays, getHebrewDayLabels } from "@/lib/week";
 
 interface WeeklyPreferencesProps {
   employees: Employee[];
   stations: Station[];
   weekStart: Date;
+  activeDays: number[];
   onUpdate: (employeeId: string, updates: Partial<Employee>) => void;
 }
 
-const HEBREW_DAYS = ["ראשון", "שני", "שלישי", "רביעי", "חמישי"];
-
-function getWeekDays(weekStart: Date): string[] {
-  return Array.from({ length: 5 }, (_, i) => {
-    const date = new Date(weekStart);
-    date.setDate(date.getDate() + i);
-    return date.toISOString().split("T")[0];
-  });
-}
-
-export function WeeklyPreferences({ employees, stations, weekStart, onUpdate }: WeeklyPreferencesProps) {
+export function WeeklyPreferences({ employees, stations, weekStart, activeDays, onUpdate }: WeeklyPreferencesProps) {
   const [selectedEmployee, setSelectedEmployee] = useState<string>("");
-  const weekDays = getWeekDays(weekStart);
+  const weekDays = getWeekDays(weekStart, activeDays);
+  const hebrewDays = getHebrewDayLabels(activeDays);
   const selectedEmp = employees.find(e => e.id === selectedEmployee);
 
   const handleUnavailableToggle = (date: string) => {
@@ -81,7 +74,7 @@ export function WeeklyPreferences({ employees, stations, weekStart, onUpdate }: 
         <Calendar className="h-5 w-5 text-muted-foreground" />
         <div className="text-sm text-muted-foreground">
           שבוע: {new Date(weekDays[0]).toLocaleDateString("he-IL")} עד{" "}
-          {new Date(weekDays[4]).toLocaleDateString("he-IL")}
+          {new Date(weekDays[weekDays.length - 1]).toLocaleDateString("he-IL")}
         </div>
       </div>
 
@@ -150,7 +143,7 @@ export function WeeklyPreferences({ employees, stations, weekStart, onUpdate }: 
                       htmlFor={`unavailable-${date}`}
                       className="cursor-pointer flex-1"
                     >
-                      {HEBREW_DAYS[idx]}{" "}
+                      {hebrewDays[idx]}{" "}
                       <span className="text-muted-foreground text-xs">
                         ({new Date(date).toLocaleDateString("he-IL")})
                       </span>
@@ -185,7 +178,7 @@ export function WeeklyPreferences({ employees, stations, weekStart, onUpdate }: 
                 return (
                   <div key={date} className="flex items-center gap-3">
                     <Label className="min-w-[110px] text-sm">
-                      {HEBREW_DAYS[idx]}{" "}
+                      {hebrewDays[idx]}{" "}
                       <span className="text-xs text-muted-foreground">
                         (
                         {new Date(date).toLocaleDateString("he-IL", {
