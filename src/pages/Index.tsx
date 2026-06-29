@@ -677,7 +677,7 @@ const Index = () => {
         <Tabs defaultValue="schedule" className="space-y-6">
           <TabsList className="h-auto bg-transparent p-0 gap-7 justify-start rounded-none border-b border-border">
             <TabsTrigger value="stations" className="bg-transparent rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-foreground text-muted-foreground gap-2 px-0 py-2.5 text-sm font-medium transition-all">
-              <span className="index-num">01</span> עמדות
+              <span className="index-num">01</span> עמדות והגדרות
             </TabsTrigger>
             <TabsTrigger value="employees" className="bg-transparent rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-foreground text-muted-foreground gap-2 px-0 py-2.5 text-sm font-medium transition-all">
               <span className="index-num">02</span> עובדים
