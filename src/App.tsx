@@ -9,6 +9,7 @@ import { isSupabaseConfigured } from "@/lib/supabase";
 import { LoginPage } from "@/pages/LoginPage";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
+import ErrorBoundary from "@/components/error-boundary/ErrorBoundary";
 
 const queryClient = new QueryClient();
 
@@ -20,7 +21,7 @@ function AppContent() {
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center space-y-3">
           <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
-          <p className="text-sm text-muted-foreground">טוען...</p>
+          <p className="text-sm text-muted-foreground">Loading workspace...</p>
         </div>
       </div>
     );
@@ -39,17 +40,19 @@ function AppContent() {
 }
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <AuthProvider>
-          <AppContent />
-        </AuthProvider>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
+  <ErrorBoundary>
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <AuthProvider>
+            <AppContent />
+          </AuthProvider>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  </ErrorBoundary>
 );
 
 export default App;

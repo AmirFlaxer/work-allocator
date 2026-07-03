@@ -166,14 +166,14 @@ const Index = () => {
       .then(({ error }) => setSyncStatus(error ? "error" : "synced"));
   }, [profile?.org_id]);
 
-  useEffect(() => { localStorage.setItem("employees", JSON.stringify(employees)); syncToSupabase("employees", employees); }, [employees]);
-  useEffect(() => { localStorage.setItem("stations", JSON.stringify(stations)); syncToSupabase("stations", stations); }, [stations]);
-  useEffect(() => { if (schedule) { localStorage.setItem("schedule", JSON.stringify(schedule)); syncToSupabase("schedule", schedule); } }, [schedule]);
-  useEffect(() => { localStorage.setItem("weekStart", weekStart.toISOString()); syncToSupabase("weekStart", weekStart.toISOString()); }, [weekStart]);
-  useEffect(() => { localStorage.setItem("savedSchedules", JSON.stringify(savedSchedules)); syncToSupabase("savedSchedules", savedSchedules); }, [savedSchedules]);
-  useEffect(() => { localStorage.setItem("lockedCells", JSON.stringify(Array.from(lockedCells))); syncToSupabase("lockedCells", Array.from(lockedCells)); }, [lockedCells]);
-  useEffect(() => { localStorage.setItem("auditLog", JSON.stringify(auditLog)); syncToSupabase("auditLog", auditLog); }, [auditLog]);
-  useEffect(() => { localStorage.setItem("scheduleTemplates", JSON.stringify(templates)); syncToSupabase("scheduleTemplates", templates); }, [templates]);
+  useEffect(() => { localStorage.setItem("employees", JSON.stringify(employees)); syncToSupabase("employees", employees); }, [employees, syncToSupabase]);
+  useEffect(() => { localStorage.setItem("stations", JSON.stringify(stations)); syncToSupabase("stations", stations); }, [stations, syncToSupabase]);
+  useEffect(() => { if (schedule) { localStorage.setItem("schedule", JSON.stringify(schedule)); syncToSupabase("schedule", schedule); } }, [schedule, syncToSupabase]);
+  useEffect(() => { localStorage.setItem("weekStart", weekStart.toISOString()); syncToSupabase("weekStart", weekStart.toISOString()); }, [weekStart, syncToSupabase]);
+  useEffect(() => { localStorage.setItem("savedSchedules", JSON.stringify(savedSchedules)); syncToSupabase("savedSchedules", savedSchedules); }, [savedSchedules, syncToSupabase]);
+  useEffect(() => { localStorage.setItem("lockedCells", JSON.stringify(Array.from(lockedCells))); syncToSupabase("lockedCells", Array.from(lockedCells)); }, [lockedCells, syncToSupabase]);
+  useEffect(() => { localStorage.setItem("auditLog", JSON.stringify(auditLog)); syncToSupabase("auditLog", auditLog); }, [auditLog, syncToSupabase]);
+  useEffect(() => { localStorage.setItem("scheduleTemplates", JSON.stringify(templates)); syncToSupabase("scheduleTemplates", templates); }, [templates, syncToSupabase]);
 
   // ── Load from Supabase on mount ────────────────────────
   useEffect(() => {

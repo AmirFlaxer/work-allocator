@@ -35,7 +35,7 @@ function calcWorkloads(schedule: WeeklySchedule): { [name: string]: number } {
   return wl;
 }
 
-const CustomTooltip = ({ active, payload }: any) => {
+const CustomTooltip = ({ active, payload }: { active: boolean; payload: any[] }) => {
   if (active && payload?.length) {
     const { fullName, משמרות } = payload[0].payload;
     return (

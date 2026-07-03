@@ -56,3 +56,15 @@ ALTER PUBLICATION supabase_realtime ADD TABLE app_store;
 -- IMPORTANT: In Supabase → Authentication → Settings:
 --   Disable "Enable email confirmations" for easier dev/testing
 -- ════════════════════════════════════════════════════════
+
+-- ────────────────────────────────────────────────────────
+-- GRANTS — נדרש מ-30 אוקטובר 2026 (Supabase Data API change)
+-- טבלאות ב-public חייבות GRANT מפורש כדי להיות נגישות ל-API
+-- ────────────────────────────────────────────────────────
+GRANT SELECT, INSERT                    ON public.organizations TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE    ON public.profiles      TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE    ON public.app_store     TO authenticated;
+
+GRANT SELECT, INSERT, UPDATE, DELETE    ON public.organizations TO service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE    ON public.profiles      TO service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE    ON public.app_store     TO service_role;
