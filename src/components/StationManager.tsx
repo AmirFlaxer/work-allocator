@@ -127,7 +127,7 @@ export function StationManager({ stations, onAdd, onEdit, onDelete }: StationMan
                       <Badge variant="outline">{station.id}</Badge>
                       <span className="font-medium">{station.name}</span>
                       {(station.requiredCount ?? 1) > 1 && (
-                        <Badge variant="secondary" className="text-xs">עובדים {station.requiredCount}</Badge>
+                        <Badge variant="secondary" className="text-xs">{station.requiredCount} עובדים</Badge>
                       )}
                     </div>
                     <div className="flex gap-2">

@@ -819,8 +819,8 @@ const Index = () => {
                   {formatWeekRange(weekStart, activeDays)}
                 </p>
                 <div className="flex items-center gap-1.5 mt-2">
-                  <span className="text-xs px-1.5 py-0.5 rounded-md bg-primary/10 text-primary font-medium">עובדים {employees.length}</span>
-                  <span className="text-xs px-1.5 py-0.5 rounded-md bg-muted text-muted-foreground font-medium">עמדות {stations.length}</span>
+                  <span className="text-xs px-1.5 py-0.5 rounded-md bg-primary/10 text-primary font-medium">{employees.length} עובדים</span>
+                  <span className="text-xs px-1.5 py-0.5 rounded-md bg-muted text-muted-foreground font-medium">{stations.length} עמדות</span>
                 </div>
               </div>
             </div>
@@ -943,7 +943,7 @@ const Index = () => {
                   <div className="flex flex-col items-center gap-0.5 text-center">
                     <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">שבוע</p>
                     <p className="font-bold text-lg leading-tight">
-                      {`${weekStart.toLocaleDateString("he-IL", { month: "long" })} ${weekStart.toLocaleDateString("he-IL", { day: "2-digit" })}`}
+                      {weekStart.toLocaleDateString("he-IL", { day: "2-digit", month: "long" })}
                     </p>
                     <p className="text-xs text-muted-foreground">{weekStart.getFullYear()}</p>
                     <button onClick={handleToday} className="mt-1 text-xs text-primary hover:underline font-medium">
