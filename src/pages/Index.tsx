@@ -17,6 +17,7 @@ import { ScheduleChanges } from "@/components/ScheduleChanges";
 import { MonthlyReport } from "@/components/MonthlyReport";
 import { ContactDeveloper } from "@/components/ContactDeveloper";
 import { AboutDialog } from "@/components/AboutDialog";
+import { HelpDialog, GuidesBanner } from "@/components/HelpGuides";
 import { generateWeeklySchedule } from "@/lib/scheduler";
 import { getWeekDays, getHebrewDayLabels, DEFAULT_ACTIVE_DAYS, ALL_HEBREW_DAYS, cellNames, stationSlots, cellKey, dailyShiftCap, parseISODate } from "@/lib/week";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -653,6 +654,8 @@ const Index = () => {
             )}
             {!isSupabaseConfigured && <CloudOff className="h-4 w-4 text-muted-foreground/40" title="נתונים מקומיים בלבד" />}
 
+            <HelpDialog />
+
             <ContactDeveloper />
 
             <AboutDialog />
@@ -673,7 +676,8 @@ const Index = () => {
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-6">
+      <main className="container mx-auto px-4 py-6 space-y-6">
+        <GuidesBanner />
         <Tabs defaultValue="schedule" className="space-y-6">
           <TabsList className="h-auto bg-transparent p-0 gap-7 justify-start rounded-none border-b border-border">
             <TabsTrigger value="stations" className="bg-transparent rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-foreground text-muted-foreground gap-2 px-0 py-2.5 text-sm font-medium transition-all">
