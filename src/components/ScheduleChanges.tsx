@@ -2,7 +2,7 @@ import { WeeklySchedule, Station } from "@/types/employee";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ArrowRight, TrendingUp } from "lucide-react";
-import { getWeekDays, cellNames, stationSlots } from "@/lib/week";
+import { getWeekDays, cellNames, stationSlots, parseISODate } from "@/lib/week";
 
 interface ScheduleChangesProps {
   currentSchedule: WeeklySchedule;
@@ -85,7 +85,7 @@ export function ScheduleChanges({ currentSchedule, previousSchedule, stations, c
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
                   <Badge variant="outline" className="text-xs">
-                    {new Date(change.date).toLocaleDateString('he-IL', { 
+                    {parseISODate(change.date).toLocaleDateString('he-IL', {
                       weekday: 'long', 
                       day: '2-digit', 
                       month: '2-digit' 

@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Lock, LockOpen, Pencil, X, Eye, History } from "lucide-react";
 import { calculateWorkloads } from "@/lib/scheduler";
-import { getWeekDays, getHebrewDayLabels, cellNames, stationSlots, cellKey } from "@/lib/week";
+import { getWeekDays, getHebrewDayLabels, cellNames, stationSlots, cellKey, parseISODate } from "@/lib/week";
 import { getEmployeeColor } from "@/lib/employeeColors";
 
 interface ScheduleTableProps {
@@ -127,7 +127,7 @@ export function ScheduleTable({
                   >
                     <div className="text-sm font-bold text-foreground">{hebrewDays[idx]}</div>
                     <div className="text-xs font-normal text-muted-foreground mt-0.5">
-                      {new Date(date).toLocaleDateString("he-IL", { day: "2-digit", month: "2-digit" })}
+                      {parseISODate(date).toLocaleDateString("he-IL", { day: "2-digit", month: "2-digit" })}
                     </div>
                     {emptyPerDay[idx] > 0 ? (
                       <div className="text-xs text-orange-500 font-medium mt-0.5">⚠ {emptyPerDay[idx]} ריקות</div>

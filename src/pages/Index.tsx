@@ -18,7 +18,7 @@ import { MonthlyReport } from "@/components/MonthlyReport";
 import { ContactDeveloper } from "@/components/ContactDeveloper";
 import { AboutDialog } from "@/components/AboutDialog";
 import { generateWeeklySchedule } from "@/lib/scheduler";
-import { getWeekDays, getHebrewDayLabels, DEFAULT_ACTIVE_DAYS, ALL_HEBREW_DAYS, cellNames, stationSlots, cellKey, dailyShiftCap } from "@/lib/week";
+import { getWeekDays, getHebrewDayLabels, DEFAULT_ACTIVE_DAYS, ALL_HEBREW_DAYS, cellNames, stationSlots, cellKey, dailyShiftCap, parseISODate } from "@/lib/week";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Plus, Calendar, Users, MapPin, Save, FolderOpen, Trash2,
@@ -51,8 +51,8 @@ function getWeekNumber(date: Date): number {
 
 function formatWeekRange(weekStart: Date, activeDays: number[]): string {
   const days = getWeekDays(weekStart, activeDays);
-  const s = new Date(days[0]).toLocaleDateString("he-IL", { weekday: "long", day: "2-digit", month: "long" });
-  const e = new Date(days[days.length - 1]).toLocaleDateString("he-IL", { weekday: "long", day: "2-digit", month: "long", year: "numeric" });
+  const s = parseISODate(days[0]).toLocaleDateString("he-IL", { weekday: "long", day: "2-digit", month: "long" });
+  const e = parseISODate(days[days.length - 1]).toLocaleDateString("he-IL", { weekday: "long", day: "2-digit", month: "long", year: "numeric" });
   return `${s} · ${e}`;
 }
 
@@ -565,7 +565,7 @@ const Index = () => {
     const hebrewDays = getHebrewDayLabels(activeDays);
     const weekDays = getWeekDays(weekStart, activeDays);
     const headers = ["עמדה", ...hebrewDays.map((day, idx) =>
-      `${day} (${new Date(weekDays[idx]).toLocaleDateString("he-IL", { day: "2-digit", month: "2-digit" })})`
+      `${day} (${parseISODate(weekDays[idx]).toLocaleDateString("he-IL", { day: "2-digit", month: "2-digit" })})`
     )];
     const data = stations.map(station => [
       station.name,

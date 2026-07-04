@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { SavedSchedule, Station } from "@/types/employee";
-import { cellNames } from "@/lib/week";
+import { cellNames, parseISODate } from "@/lib/week";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -32,7 +32,7 @@ function buildReport(savedSchedules: SavedSchedule[], stations: Station[], month
 
   savedSchedules.forEach(saved => {
     Object.entries(saved.schedule).forEach(([date, daySlots]) => {
-      const d = new Date(date);
+      const d = parseISODate(date);
       if (d.getMonth() !== month || d.getFullYear() !== year) return;
       Object.entries(daySlots).forEach(([stationId, cell]) => {
         const stationName = stationMap.get(Number(stationId)) ?? `עמדה ${stationId}`;
@@ -70,7 +70,7 @@ function buildStationReport(savedSchedules: SavedSchedule[], stations: Station[]
 
   savedSchedules.forEach(saved => {
     Object.entries(saved.schedule).forEach(([date, daySlots]) => {
-      const d = new Date(date);
+      const d = parseISODate(date);
       if (d.getMonth() !== month || d.getFullYear() !== year) return;
       Object.entries(daySlots).forEach(([stationId, cell]) => {
         const id = Number(stationId);

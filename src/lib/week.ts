@@ -15,6 +15,21 @@ function normalizeActiveDays(activeDays: number[]): number[] {
   return unique.length > 0 ? unique.sort((a, b) => a - b) : [...DEFAULT_ACTIVE_DAYS];
 }
 
+// Format a Date's local calendar day as YYYY-MM-DD. toISOString() formats in
+// UTC and can shift a day across timezones - never use it for date-only keys.
+export function toISODateLocal(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+// Parse a YYYY-MM-DD key as local midnight. new Date("YYYY-MM-DD") parses as
+// UTC midnight, so displaying it in a negative-UTC timezone shows the
+// previous day - always parse date-only keys with this before display.
+export function parseISODate(iso: string): Date {
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(y, m - 1, d);
+}
+
 // Anchor to the Sunday of weekStart's week, then return one ISO date per active
 // weekday. Tolerates a weekStart that is not exactly Sunday.
 export function getWeekDays(weekStart: Date, activeDays: number[]): string[] {
@@ -23,7 +38,7 @@ export function getWeekDays(weekStart: Date, activeDays: number[]): string[] {
   return normalizeActiveDays(activeDays).map(weekday => {
     const d = new Date(sunday);
     d.setDate(d.getDate() + weekday);
-    return d.toISOString().split("T")[0];
+    return toISODateLocal(d);
   });
 }
 

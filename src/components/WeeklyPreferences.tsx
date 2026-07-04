@@ -7,7 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Calendar, X } from "lucide-react";
-import { getWeekDays, getHebrewDayLabels } from "@/lib/week";
+import { getWeekDays, getHebrewDayLabels, parseISODate } from "@/lib/week";
 
 interface WeeklyPreferencesProps {
   employees: Employee[];
@@ -73,8 +73,8 @@ export function WeeklyPreferences({ employees, stations, weekStart, activeDays, 
       <div className="flex items-center gap-4">
         <Calendar className="h-5 w-5 text-muted-foreground" />
         <div className="text-sm text-muted-foreground">
-          שבוע: {new Date(weekDays[0]).toLocaleDateString("he-IL")} עד{" "}
-          {new Date(weekDays[weekDays.length - 1]).toLocaleDateString("he-IL")}
+          שבוע: {parseISODate(weekDays[0]).toLocaleDateString("he-IL")} עד{" "}
+          {parseISODate(weekDays[weekDays.length - 1]).toLocaleDateString("he-IL")}
         </div>
       </div>
 
@@ -145,7 +145,7 @@ export function WeeklyPreferences({ employees, stations, weekStart, activeDays, 
                     >
                       {hebrewDays[idx]}{" "}
                       <span className="text-muted-foreground text-xs">
-                        ({new Date(date).toLocaleDateString("he-IL")})
+                        ({parseISODate(date).toLocaleDateString("he-IL")})
                       </span>
                     </Label>
                     {isUnavailable && (
@@ -181,7 +181,7 @@ export function WeeklyPreferences({ employees, stations, weekStart, activeDays, 
                       {hebrewDays[idx]}{" "}
                       <span className="text-xs text-muted-foreground">
                         (
-                        {new Date(date).toLocaleDateString("he-IL", {
+                        {parseISODate(date).toLocaleDateString("he-IL", {
                           day: "2-digit",
                           month: "2-digit",
                         })}
