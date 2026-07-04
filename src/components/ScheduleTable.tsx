@@ -118,6 +118,7 @@ export function ScheduleTable({
           <Table>
             <TableHeader>
               <TableRow className="bg-card border-b-2 border-border">
+                <TableHead className="font-bold text-right min-w-[120px] text-foreground border-l border-border">עמדה</TableHead>
                 {weekDays.map((date, idx) => (
                   <TableHead
                     key={date}
@@ -135,7 +136,6 @@ export function ScheduleTable({
                     )}
                   </TableHead>
                 ))}
-                <TableHead className="font-bold text-right min-w-[120px] text-foreground border-r border-border">עמדה</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -143,6 +143,15 @@ export function ScheduleTable({
                 const slots = stationSlots(station);
                 return Array.from({ length: slots }, (_, slotIndex) => (
                   <TableRow key={`${station.id}-${slotIndex}`} className="border-b border-border hover:bg-muted/30 transition-colors">
+                    {slotIndex === 0 && (
+                      <TableCell rowSpan={slots} className="font-medium text-right py-3 border-l border-border align-middle">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-bold">{station.name}</span>
+                          {slots > 1 && <Badge variant="secondary" className="text-xs">עובדים {slots}</Badge>}
+                          <Badge variant="outline" className="text-xs">{station.id}</Badge>
+                        </div>
+                      </TableCell>
+                    )}
                     {weekDays.map(date => {
                       const name = cellNames(schedule[date]?.[station.id])[slotIndex] ?? "";
                       const shifts = workloads[name] ?? 0;
@@ -224,15 +233,6 @@ export function ScheduleTable({
                         </TableCell>
                       );
                     })}
-                    {slotIndex === 0 && (
-                      <TableCell rowSpan={slots} className="font-medium text-right py-3 border-r border-border align-middle">
-                        <div className="flex items-center justify-end gap-2">
-                          <span className="text-sm font-bold">{station.name}</span>
-                          {slots > 1 && <Badge variant="secondary" className="text-xs">עובדים {slots}</Badge>}
-                          <Badge variant="outline" className="text-xs">{station.id}</Badge>
-                        </div>
-                      </TableCell>
-                    )}
                   </TableRow>
                 ));
               })}
