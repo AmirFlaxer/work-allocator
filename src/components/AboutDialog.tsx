@@ -1,6 +1,6 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Info, ShieldCheck, Accessibility } from "lucide-react";
+import { Info, ShieldCheck, Accessibility, BookOpen, Rocket } from "lucide-react";
 
 export function AboutDialog() {
   return (
@@ -20,6 +20,26 @@ export function AboutDialog() {
           <p className="text-sm text-muted-foreground leading-relaxed">
             מערכת שיבוץ עובדים - כלי לחלוקת עבודה שבועית לצוותים: מי עובד, באיזו עמדה, באיזה יום.
           </p>
+
+          {/* Guides */}
+          <section className="border-t border-border pt-4">
+            <div className="flex items-center gap-2 mb-2">
+              <BookOpen className="h-4 w-4 text-primary shrink-0" />
+              <h3 className="font-bold text-sm">מדריכים</h3>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" size="sm" asChild>
+                <a href="/getting-started.pdf" target="_blank" rel="noopener noreferrer">
+                  <Rocket className="h-4 w-4 ml-1.5" /> מדריך התחלה מהירה
+                </a>
+              </Button>
+              <Button variant="outline" size="sm" asChild>
+                <a href="/user-guide.pdf" target="_blank" rel="noopener noreferrer">
+                  <BookOpen className="h-4 w-4 ml-1.5" /> מדריך מלא למשתמש
+                </a>
+              </Button>
+            </div>
+          </section>
 
           {/* Accessibility */}
           <section className="border-t border-border pt-4">
