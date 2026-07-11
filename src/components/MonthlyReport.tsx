@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { SavedSchedule, Station } from "@/types/employee";
-import { cellNames, parseISODate } from "@/lib/week";
+import { cellNames, parseISODate, getWeekDays } from "@/lib/week";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -16,7 +16,7 @@ interface MonthlyReportProps {
   stations: Station[];
 }
 
-interface ShiftEntry { date: string; stationName: string; }
+interface ShiftEntry { dateISO: string; date: string; stationName: string; }
 interface EmployeeReport { name: string; totalShifts: number; shifts: ShiftEntry[]; }
 
 const HEBREW_MONTHS = [
@@ -25,6 +25,18 @@ const HEBREW_MONTHS = [
 ];
 
 const COLORS = ["#22c55e","#84cc16","#eab308","#f97316","#ef4444","#8b5cf6","#06b6d4","#ec4899"];
+
+// Only the latest save of each week counts - saving the same week twice
+// (e.g. draft then final) must not double-count shifts in payroll reports.
+function latestPerWeek(savedSchedules: SavedSchedule[]): SavedSchedule[] {
+  const byWeek = new Map<string, SavedSchedule>();
+  savedSchedules.forEach(s => {
+    const weekKey = getWeekDays(new Date(s.weekStart), [0])[0];
+    const existing = byWeek.get(weekKey);
+    if (!existing || s.savedAt > existing.savedAt) byWeek.set(weekKey, s);
+  });
+  return Array.from(byWeek.values());
+}
 
 function buildReport(savedSchedules: SavedSchedule[], stations: Station[], month: number, year: number): EmployeeReport[] {
   const stationMap = new Map(stations.map(s => [s.id, s.name]));
@@ -39,6 +51,7 @@ function buildReport(savedSchedules: SavedSchedule[], stations: Station[], month
         cellNames(cell).forEach(empName => {
           if (!empName) return;
           const entry: ShiftEntry = {
+            dateISO: date,
             date: d.toLocaleDateString("he-IL", { day: "2-digit", month: "2-digit", year: "numeric" }),
             stationName,
           };
@@ -53,11 +66,11 @@ function buildReport(savedSchedules: SavedSchedule[], stations: Station[], month
   empMap.forEach((shifts, name) => {
     const seen = new Set<string>();
     const unique = shifts.filter(s => {
-      if (seen.has(s.date + s.stationName)) return false;
-      seen.add(s.date + s.stationName);
+      if (seen.has(s.dateISO + s.stationName)) return false;
+      seen.add(s.dateISO + s.stationName);
       return true;
     });
-    unique.sort((a, b) => a.date.localeCompare(b.date));
+    unique.sort((a, b) => a.dateISO.localeCompare(b.dateISO));
     result.push({ name, totalShifts: unique.length, shifts: unique });
   });
   return result.sort((a, b) => b.totalShifts - a.totalShifts);
@@ -91,10 +104,12 @@ function buildStationReport(savedSchedules: SavedSchedule[], stations: Station[]
 }
 
 function buildHistoricalData(savedSchedules: SavedSchedule[], stations: Station[]) {
+  // Zero-padded month keys so lexicographic sort is chronological
+  // ("2026-09" < "2026-10"; unpadded "2026-10" sorts before "2026-9").
   const monthSet = new Set<string>();
   savedSchedules.forEach(s => {
     const d = new Date(s.weekStart);
-    monthSet.add(`${d.getFullYear()}-${d.getMonth()}`);
+    monthSet.add(`${d.getFullYear()}-${String(d.getMonth()).padStart(2, "0")}`);
   });
 
   return Array.from(monthSet)
@@ -117,26 +132,28 @@ export function MonthlyReport({ savedSchedules, stations }: MonthlyReportProps) 
   const [year, setYear] = useState(now.getFullYear());
   const [showDetails, setShowDetails] = useState(false);
 
+  const uniqueSchedules = useMemo(() => latestPerWeek(savedSchedules), [savedSchedules]);
+
   const years = useMemo(() => {
     const ys = new Set<number>();
-    savedSchedules.forEach(s => ys.add(new Date(s.weekStart).getFullYear()));
+    uniqueSchedules.forEach(s => ys.add(new Date(s.weekStart).getFullYear()));
     ys.add(now.getFullYear());
     return Array.from(ys).sort((a, b) => b - a);
-  }, [savedSchedules]);
+  }, [uniqueSchedules]);
 
   const report = useMemo(
-    () => buildReport(savedSchedules, stations, month, year),
-    [savedSchedules, stations, month, year]
+    () => buildReport(uniqueSchedules, stations, month, year),
+    [uniqueSchedules, stations, month, year]
   );
 
   const stationReport = useMemo(
-    () => buildStationReport(savedSchedules, stations, month, year),
-    [savedSchedules, stations, month, year]
+    () => buildStationReport(uniqueSchedules, stations, month, year),
+    [uniqueSchedules, stations, month, year]
   );
 
   const historicalData = useMemo(
-    () => buildHistoricalData(savedSchedules, stations),
-    [savedSchedules, stations]
+    () => buildHistoricalData(uniqueSchedules, stations),
+    [uniqueSchedules, stations]
   );
 
   const allEmployeeNames = useMemo(() => {
@@ -218,7 +235,7 @@ export function MonthlyReport({ savedSchedules, stations }: MonthlyReportProps) 
         </div>
       </div>
       <Tabs defaultValue="monthly">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-3 no-print">
           <TabsTrigger value="monthly">דוח חודשי</TabsTrigger>
           <TabsTrigger value="stations">דוח עמדות</TabsTrigger>
           <TabsTrigger value="history">גרף היסטורי</TabsTrigger>
@@ -287,10 +304,14 @@ export function MonthlyReport({ savedSchedules, stations }: MonthlyReportProps) 
                         const stationCounts = new Map<string, number>();
                         emp.shifts.forEach(s => stationCounts.set(s.stationName, (stationCounts.get(s.stationName) ?? 0) + 1));
                         return (
-                          <tr key={emp.name} className={i % 2 === 0 ? "bg-white" : "bg-muted/20"}>
+                          <tr key={emp.name} className={i % 2 === 0 ? "bg-card" : "bg-muted/20"}>
                             <td className="py-2 px-3 font-medium">{emp.name}</td>
                             <td className="py-2 px-3 text-center">
-                              <Badge className={emp.totalShifts <= 2 ? "bg-green-100 text-green-700" : emp.totalShifts <= 10 ? "bg-blue-100 text-blue-700" : "bg-orange-100 text-orange-700"}>
+                              <Badge className={emp.totalShifts <= 2
+                                ? "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300"
+                                : emp.totalShifts <= 10
+                                  ? "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300"
+                                  : "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300"}>
                                 {emp.totalShifts}
                               </Badge>
                             </td>
@@ -361,7 +382,7 @@ export function MonthlyReport({ savedSchedules, stations }: MonthlyReportProps) 
 
         {/* ── Stations ── */}
         <TabsContent value="stations" className="space-y-4 mt-4">
-          <div className="flex flex-wrap items-end gap-4">
+          <div className="flex flex-wrap items-end gap-4 no-print">
             <div className="space-y-1">
               <label className="text-sm font-medium">חודש</label>
               <Select value={String(month)} onValueChange={v => setMonth(Number(v))}>
@@ -414,7 +435,7 @@ export function MonthlyReport({ savedSchedules, stations }: MonthlyReportProps) 
                     {stationReport.map((s, i) => {
                       const pct = s.total > 0 ? Math.round((s.filled / s.total) * 100) : 0;
                       return (
-                        <tr key={s.name} className={i % 2 === 0 ? "bg-white" : "bg-muted/20"}>
+                        <tr key={s.name} className={i % 2 === 0 ? "bg-card" : "bg-muted/20"}>
                           <td className="py-2 px-3 font-medium">{s.name}</td>
                           <td className="py-2 px-3 text-center">{s.filled}</td>
                           <td className="py-2 px-3 text-center text-red-500">{s.empty}</td>

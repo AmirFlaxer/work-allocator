@@ -67,6 +67,10 @@ export function AboutDialog() {
               <li>התחברות מאובטחת עם חוקי סיסמה חזקים</li>
             </ul>
           </section>
+
+          <p className="border-t border-border pt-3 text-xs text-muted-foreground">
+            גרסה {__APP_VERSION__}
+          </p>
         </div>
       </DialogContent>
     </Dialog>

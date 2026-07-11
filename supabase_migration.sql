@@ -35,31 +35,32 @@ ALTER TABLE organizations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE profiles      ENABLE ROW LEVEL SECURITY;
 ALTER TABLE app_store     ENABLE ROW LEVEL SECURITY;
 
--- 5. RLS Policies — Organizations
+-- 5. Helper function — עוקפת RLS כדי למנוע infinite recursion.
+--    חייבת להיות מוגדרת לפני ה-policies שמשתמשות בה.
+CREATE OR REPLACE FUNCTION get_my_org_id()
+RETURNS TEXT LANGUAGE SQL SECURITY DEFINER STABLE
+AS $$ SELECT org_id FROM profiles WHERE id = auth.uid(); $$;
+
+-- 6. RLS Policies — Organizations
 CREATE POLICY "org_read"   ON organizations FOR SELECT
   USING (id = get_my_org_id());
 -- רק משתמש מאומת שעדיין אין לו ארגון יכול ליצור ארגון חדש (במהלך signup)
 CREATE POLICY "org_create" ON organizations FOR INSERT
   WITH CHECK (auth.uid() IS NOT NULL AND NOT EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid()));
 
--- 6a. Helper function — עוקפת RLS כדי למנוע infinite recursion
-CREATE OR REPLACE FUNCTION get_my_org_id()
-RETURNS TEXT LANGUAGE SQL SECURITY DEFINER STABLE
-AS $$ SELECT org_id FROM profiles WHERE id = auth.uid(); $$;
-
--- 6. RLS Policies — Profiles
+-- 7. RLS Policies — Profiles
 -- משתמש רואה את כל חברי הארגון שלו
 CREATE POLICY "profile_read" ON profiles FOR SELECT
   USING (org_id = get_my_org_id());
 CREATE POLICY "profile_create" ON profiles FOR INSERT WITH CHECK (id = auth.uid());
 CREATE POLICY "profile_update" ON profiles FOR UPDATE USING (id = auth.uid());
 
--- 7. RLS Policies — App Store (org isolation)
+-- 8. RLS Policies — App Store (org isolation)
 CREATE POLICY "store_all" ON app_store FOR ALL
   USING     (org_id = get_my_org_id())
   WITH CHECK(org_id = get_my_org_id());
 
--- 8. Enable Realtime
+-- 9. Enable Realtime
 ALTER PUBLICATION supabase_realtime ADD TABLE app_store;
 
 -- ════════════════════════════════════════════════════════

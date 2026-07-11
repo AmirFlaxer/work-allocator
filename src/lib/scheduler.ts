@@ -62,6 +62,12 @@ export function generateWeeklySchedule(
     return -1;
   };
 
+  // Of the eligible employees, the one with the fewest assigned days so far -
+  // picking the first match would pile extra shifts on whoever is listed first.
+  const leastLoaded = (candidates: Employee[]): Employee | undefined =>
+    candidates.reduce<Employee | undefined>((best, emp) =>
+      !best || getAssignedCount(emp.id) < getAssignedCount(best.id) ? emp : best, undefined);
+
   const place = (date: string, stationId: number, emp: Employee) => {
     const slot = freeSlot(date, stationId);
     if (slot < 0) return false;
@@ -134,12 +140,13 @@ export function generateWeeklySchedule(
   weekDays.forEach(date => {
     stations.forEach(station => {
       while (freeSlot(date, station.id) >= 0) {
-        const candidate = employees.filter(emp => !emp.hasStar).find(emp =>
+        const candidate = leastLoaded(employees.filter(emp =>
+          !emp.hasStar &&
           availableStationsFor(emp).includes(station.id) &&
           !employeeAssignments[emp.id][date] &&
           !emp.unavailableDays?.includes(date) &&
           !reachedMax(emp)
-        );
+        ));
         if (!candidate) break;
         place(date, station.id, candidate);
       }
@@ -150,13 +157,13 @@ export function generateWeeklySchedule(
   weekDays.forEach(date => {
     stations.forEach(station => {
       while (freeSlot(date, station.id) >= 0) {
-        const multi = employees.find(emp =>
+        const multi = leastLoaded(employees.filter(emp =>
           availableStationsFor(emp).includes(station.id) &&
           employeeAssignments[emp.id][date] < dailyShiftCap(emp) &&
           !emp.unavailableDays?.includes(date) &&
           !reachedMax(emp) &&
           !slotArr(date, station.id).includes(emp.name)
-        );
+        ));
         if (!multi) break;
         const slot = freeSlot(date, station.id);
         slotArr(date, station.id)[slot] = multi.name;

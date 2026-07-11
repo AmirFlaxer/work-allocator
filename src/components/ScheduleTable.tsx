@@ -195,7 +195,7 @@ export function ScheduleTable({
                                   {name}
                                 </Badge>
                                 <button
-                                  className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground"
+                                  className="opacity-0 group-hover:opacity-100 touch-visible transition-opacity p-0.5 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground"
                                   title={`פרטי ${name}`}
                                   onClick={() => setViewEmployee(name)}
                                 >
@@ -204,14 +204,14 @@ export function ScheduleTable({
                               </div>
                             ) : (
                               <button
-                                className="opacity-0 group-hover:opacity-60 transition-all text-xs cursor-pointer text-primary border border-dashed border-primary/40 rounded-full px-2.5 py-0.5 hover:opacity-100 hover:bg-primary/5 hover:border-primary/60"
+                                className="opacity-0 group-hover:opacity-60 touch-visible transition-all text-xs cursor-pointer text-primary border border-dashed border-primary/40 rounded-full px-2.5 py-0.5 hover:opacity-100 hover:bg-primary/5 hover:border-primary/60"
                                 onClick={() => handleCellClick(date, station.id, slotIndex)}
                               >
                                 + שבץ
                               </button>
                             )}
                             <button
-                              className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded hover:bg-muted"
+                              className="opacity-0 group-hover:opacity-100 touch-visible transition-opacity p-0.5 rounded hover:bg-muted"
                               title={locked ? "בטל נעילה" : "נעל תא"}
                               onClick={() => onToggleLock(date, station.id, slotIndex)}
                             >
@@ -222,7 +222,7 @@ export function ScheduleTable({
                             </button>
                             {(auditLog[key]?.length ?? 0) > 0 && (
                               <button
-                                className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground"
+                                className="opacity-0 group-hover:opacity-100 touch-visible transition-opacity p-0.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground"
                                 title="היסטוריית שינויים"
                                 onClick={() => setAuditCell(key)}
                               >

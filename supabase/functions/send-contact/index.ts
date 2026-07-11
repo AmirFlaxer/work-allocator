@@ -9,19 +9,34 @@ const CORS = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// קלט משתמש משורבב ל-HTML של המייל - חובה להבריח תווים מיוחדים,
+// אחרת אפשר להזריק תגיות ולזייף תוכן במייל שמגיע לבעלים.
+function escapeHtml(s: string): string {
+  return s
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
 
   try {
-    const { senderName, senderEmail, message } = await req.json() as {
-      senderName: string;
-      senderEmail: string;
-      message: string;
+    const body = await req.json() as {
+      senderName?: string;
+      senderEmail?: string;
+      message?: string;
     };
 
-    if (!message?.trim()) {
+    if (!body.message?.trim()) {
       return new Response("message required", { status: 400, headers: CORS });
     }
+
+    const senderName  = escapeHtml((body.senderName ?? "").slice(0, 200));
+    const senderEmail = escapeHtml((body.senderEmail ?? "").slice(0, 200));
+    const message     = escapeHtml(body.message.slice(0, 5000));
 
     const sentAt = new Date().toLocaleString("he-IL", { timeZone: "Asia/Jerusalem" });
 

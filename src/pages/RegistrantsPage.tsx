@@ -29,8 +29,16 @@ export function RegistrantsPage() {
       .select("id, full_name, email, role, created_at, organizations(name)")
       .order("created_at", { ascending: false })
       .then(({ data, error: err }) => {
-        if (err) setError(err.message);
-        else setRegistrants((data as Registrant[]) ?? []);
+        if (err) { setError(err.message); }
+        else {
+          // PostgREST מחזיר את הקשר organizations כאובייקט, אבל הטיפוס המוסק
+          // הוא מערך - מנרמלים לשני המקרים.
+          const rows = (data ?? []).map(r => ({
+            ...r,
+            organizations: Array.isArray(r.organizations) ? (r.organizations[0] ?? null) : r.organizations,
+          })) as Registrant[];
+          setRegistrants(rows);
+        }
         setLoading(false);
       });
   }, []);

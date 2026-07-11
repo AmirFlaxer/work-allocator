@@ -11,11 +11,14 @@ import { Textarea } from "@/components/ui/textarea";
 interface EmployeeFormProps {
   employee?: Employee;
   stations: Station[];
+  /** ימי העבודה הפעילים - קובעים את תקרת המשמרות השבועית */
+  activeDays: number[];
   onSave: (employee: Omit<Employee, "id"> & { id?: string }) => void;
   onCancel: () => void;
 }
 
-export function EmployeeForm({ employee, stations, onSave, onCancel }: EmployeeFormProps) {
+export function EmployeeForm({ employee, stations, activeDays, onSave, onCancel }: EmployeeFormProps) {
+  const weeklyCap = Math.max(1, activeDays.length);
   const [name, setName] = useState(employee?.name || "");
   const [hasStar, setHasStar] = useState(employee?.hasStar || false);
   const [minWeeklyShifts, setMinWeeklyShifts] = useState(employee?.minWeeklyShifts ?? 1);
@@ -25,8 +28,14 @@ export function EmployeeForm({ employee, stations, onSave, onCancel }: EmployeeF
   const [maxDailyShifts, setMaxDailyShifts] = useState<number>(
     employee ? dailyShiftCap(employee) : 1
   );
+  // רשימת עמדות ריקה פירושה "כל העמדות" בכל שאר האפליקציה. המתג המפורש
+  // שומר את הסמנטיקה הזו: כשהוא דולק נשמרת רשימה ריקה, כך שעמדות שיתווספו
+  // בעתיד ייכללו אוטומטית - במקום רשימה מפורשת שמתיישנת בשקט.
+  const [allStations, setAllStations] = useState(
+    employee ? (employee.availableStations?.length ?? 0) === 0 : true
+  );
   const [availableStations, setAvailableStations] = useState<number[]>(
-    employee?.availableStations || stations.map(s => s.id)
+    employee?.availableStations?.length ? employee.availableStations : stations.map(s => s.id)
   );
   const [notes, setNotes] = useState(employee?.notes || "");
 
@@ -43,9 +52,14 @@ export function EmployeeForm({ employee, stations, onSave, onCancel }: EmployeeF
       ? "המקסימום חייב להיות גדול או שווה למינימום"
       : null;
 
+  const stationsError =
+    !allStations && availableStations.length === 0
+      ? "בחר לפחות עמדה אחת, או סמן \"כל העמדות\""
+      : null;
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || maxError) return;
+    if (!name.trim() || maxError || stationsError) return;
 
     onSave({
       ...(employee?.id && { id: employee.id }),
@@ -53,7 +67,7 @@ export function EmployeeForm({ employee, stations, onSave, onCancel }: EmployeeF
       hasStar,
       minWeeklyShifts,
       maxWeeklyShifts: maxWeeklyShifts === "" ? undefined : maxWeeklyShifts,
-      availableStations: availableStations.sort((a, b) => a - b),
+      availableStations: allStations ? [] : [...availableStations].sort((a, b) => a - b),
       maxDailyShifts: Math.max(1, maxDailyShifts),
       notes: notes.trim() || undefined,
     });
@@ -108,9 +122,9 @@ export function EmployeeForm({ employee, stations, onSave, onCancel }: EmployeeF
               id="minShifts"
               type="number"
               min="0"
-              max="5"
+              max={weeklyCap}
               value={minWeeklyShifts}
-              onChange={e => setMinWeeklyShifts(parseInt(e.target.value) || 0)}
+              onChange={e => setMinWeeklyShifts(Math.min(weeklyCap, parseInt(e.target.value) || 0))}
               required
             />
           </div>
@@ -123,11 +137,11 @@ export function EmployeeForm({ employee, stations, onSave, onCancel }: EmployeeF
               id="maxShifts"
               type="number"
               min={minWeeklyShifts}
-              max="5"
+              max={weeklyCap}
               value={maxWeeklyShifts}
               placeholder="ללא הגבלה"
               onChange={e =>
-                setMaxWeeklyShifts(e.target.value === "" ? "" : parseInt(e.target.value))
+                setMaxWeeklyShifts(e.target.value === "" ? "" : Math.min(weeklyCap, parseInt(e.target.value)))
               }
             />
             {maxError && <p className="text-xs text-red-500">{maxError}</p>}
@@ -137,21 +151,35 @@ export function EmployeeForm({ employee, stations, onSave, onCancel }: EmployeeF
         {/* Available stations */}
         <div className="space-y-2">
           <Label>עמדות זמינות</Label>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-            {stations.map(station => (
-              <div key={station.id} className="flex items-center space-x-2 space-x-reverse">
-                <Checkbox
-                  id={`station-${station.id}`}
-                  checked={availableStations.includes(station.id)}
-                  onCheckedChange={() => handleStationToggle(station.id)}
-                />
-                <Label htmlFor={`station-${station.id}`} className="cursor-pointer">
-                  {station.name}
-                </Label>
-              </div>
-            ))}
+          <div className="flex items-center space-x-2 space-x-reverse">
+            <Checkbox
+              id="allStations"
+              checked={allStations}
+              onCheckedChange={checked => setAllStations(checked as boolean)}
+            />
+            <Label htmlFor="allStations" className="cursor-pointer">
+              כל העמדות
+              <span className="text-xs text-muted-foreground mr-1">(כולל עמדות שיתווספו בעתיד)</span>
+            </Label>
           </div>
-          {stations.length === 0 && (
+          {!allStations && (
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 pt-1">
+              {stations.map(station => (
+                <div key={station.id} className="flex items-center space-x-2 space-x-reverse">
+                  <Checkbox
+                    id={`station-${station.id}`}
+                    checked={availableStations.includes(station.id)}
+                    onCheckedChange={() => handleStationToggle(station.id)}
+                  />
+                  <Label htmlFor={`station-${station.id}`} className="cursor-pointer">
+                    {station.name}
+                  </Label>
+                </div>
+              ))}
+            </div>
+          )}
+          {stationsError && <p className="text-xs text-red-500">{stationsError}</p>}
+          {stations.length === 0 && !allStations && (
             <p className="text-sm text-muted-foreground">אין עמדות זמינות. הוסף עמדות קודם.</p>
           )}
         </div>
@@ -174,7 +202,7 @@ export function EmployeeForm({ employee, stations, onSave, onCancel }: EmployeeF
 
         {/* Buttons */}
         <div className="flex gap-2">
-          <Button type="submit" disabled={!name.trim() || !!maxError}>
+          <Button type="submit" disabled={!name.trim() || !!maxError || !!stationsError}>
             {employee ? "עדכן" : "הוסף"}
           </Button>
           <Button type="button" variant="outline" onClick={onCancel}>

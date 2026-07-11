@@ -1,0 +1,123 @@
+import { describe, it, expect } from "vitest";
+import { Employee, Station, WeeklySchedule } from "@/types/employee";
+import { generateWeeklySchedule, countFilledSlots, calculateWorkloads } from "@/lib/scheduler";
+import { getWeekDays, cellKey, cellNames, toISODateLocal, parseISODate, DEFAULT_ACTIVE_DAYS } from "@/lib/week";
+
+// Sunday, 2026-07-12 (local time).
+const WEEK_START = new Date(2026, 6, 12);
+
+const emp = (over: Partial<Employee> & { id: string; name: string }): Employee => ({
+  availableStations: [],
+  hasStar: false,
+  minWeeklyShifts: 0,
+  ...over,
+});
+
+const st = (id: number, requiredCount = 1): Station => ({ id, name: `עמדה ${id}`, requiredCount });
+
+const namesAt = (schedule: WeeklySchedule, date: string, stationId: number) =>
+  cellNames(schedule[date]?.[stationId]);
+
+describe("generateWeeklySchedule", () => {
+  it("ממלא את כל המשבצות כשיש מספיק עובדים", () => {
+    const stations = [st(1, 2)];
+    const employees = [emp({ id: "a", name: "אבי" }), emp({ id: "b", name: "בני" })];
+    const schedule = generateWeeklySchedule(employees, stations, WEEK_START, [0]);
+    const [day] = getWeekDays(WEEK_START, [0]);
+    expect(namesAt(schedule, day, 1).sort()).toEqual(["אבי", "בני"]);
+  });
+
+  it("מכבד ימים לא זמינים", () => {
+    const days = getWeekDays(WEEK_START, [0, 1]);
+    const employees = [emp({ id: "a", name: "אבי", unavailableDays: [days[0]] })];
+    const schedule = generateWeeklySchedule(employees, [st(1)], WEEK_START, [0, 1]);
+    expect(namesAt(schedule, days[0], 1)).toEqual([""]);
+    expect(namesAt(schedule, days[1], 1)).toEqual(["אבי"]);
+  });
+
+  it("לא חורג ממקסימום משמרות שבועי", () => {
+    const employees = [emp({ id: "a", name: "אבי", maxWeeklyShifts: 2 })];
+    const schedule = generateWeeklySchedule(employees, [st(1)], WEEK_START, DEFAULT_ACTIVE_DAYS);
+    expect(countFilledSlots(schedule)).toBe(2);
+  });
+
+  it("עובד מוגבל לעמדות הזמינות שלו; רשימה ריקה פירושה כל העמדות", () => {
+    const days = getWeekDays(WEEK_START, [0]);
+    const restricted = emp({ id: "a", name: "אבי", availableStations: [2] });
+    const anyStation = emp({ id: "b", name: "בני" });
+    const schedule = generateWeeklySchedule([restricted, anyStation], [st(1), st(2)], WEEK_START, [0]);
+    expect(namesAt(schedule, days[0], 2)).toContain("אבי");
+    expect(namesAt(schedule, days[0], 1)).not.toContain("אבי");
+    expect(namesAt(schedule, days[0], 1)).toContain("בני");
+  });
+
+  it("בקשה ספציפית של עובד מסומן בכוכב מקבלת עדיפות", () => {
+    const days = getWeekDays(WEEK_START, [0, 1]);
+    const employees = [emp({
+      id: "a", name: "אבי", hasStar: true, minWeeklyShifts: 1, maxWeeklyShifts: 1,
+      specificRequests: [{ date: days[1], stationId: 1 }],
+    })];
+    const schedule = generateWeeklySchedule(employees, [st(1)], WEEK_START, [0, 1]);
+    expect(namesAt(schedule, days[1], 1)).toEqual(["אבי"]);
+    expect(namesAt(schedule, days[0], 1)).toEqual([""]);
+  });
+
+  it("משמר תאים נעולים מהשיבוץ הקודם ולא דורס אותם", () => {
+    const [day] = getWeekDays(WEEK_START, [0]);
+    const base: WeeklySchedule = { [day]: { 1: ["בני"] } };
+    const locked = new Set([cellKey(day, 1, 0)]);
+    const employees = [emp({ id: "a", name: "אבי" }), emp({ id: "b", name: "בני" })];
+    const schedule = generateWeeklySchedule(employees, [st(1)], WEEK_START, [0], base, locked);
+    expect(namesAt(schedule, day, 1)).toEqual(["בני"]);
+  });
+
+  it("מחלק משמרות עודפות לעובד העמוס פחות, לא לראשון ברשימה", () => {
+    const days = getWeekDays(WEEK_START, [0, 1]);
+    // אבי זמין בשני הימים, בני רק ביום השני - כך שלפני החלוקה העודפת
+    // לאבי יש 2 ימים ולבני יום אחד.
+    const employees = [
+      emp({ id: "a", name: "אבי", maxDailyShifts: 2 }),
+      emp({ id: "b", name: "בני", maxDailyShifts: 2, unavailableDays: [days[0]] }),
+    ];
+    const schedule = generateWeeklySchedule(employees, [st(1, 2), st(2)], WEEK_START, [0, 1]);
+    // המשבצת העודפת ביום השני (עמדה 2) צריכה ללכת לבני העמוס פחות.
+    expect(namesAt(schedule, days[1], 2)).toEqual(["בני"]);
+  });
+
+  it("תקרת משמרות יומית: canWorkMultipleStations הישן מתורגם לתקרה של 2", () => {
+    const [day] = getWeekDays(WEEK_START, [0]);
+    const employees = [emp({ id: "a", name: "אבי", canWorkMultipleStations: true })];
+    const schedule = generateWeeklySchedule(employees, [st(1), st(2)], WEEK_START, [0]);
+    expect(namesAt(schedule, day, 1)).toEqual(["אבי"]);
+    expect(namesAt(schedule, day, 2)).toEqual(["אבי"]);
+  });
+
+  it("עובד ללא ריבוי משמרות לא משובץ פעמיים באותו יום", () => {
+    const [day] = getWeekDays(WEEK_START, [0]);
+    const employees = [emp({ id: "a", name: "אבי" })];
+    const schedule = generateWeeklySchedule(employees, [st(1), st(2)], WEEK_START, [0]);
+    const total = namesAt(schedule, day, 1).concat(namesAt(schedule, day, 2)).filter(Boolean);
+    expect(total).toEqual(["אבי"]);
+  });
+
+  it("calculateWorkloads סופר משבצות לכל עובד", () => {
+    const days = getWeekDays(WEEK_START, [0, 1]);
+    const schedule: WeeklySchedule = {
+      [days[0]]: { 1: ["אבי", "בני"] },
+      [days[1]]: { 1: ["אבי", ""] },
+    };
+    expect(calculateWorkloads(schedule)).toEqual({ "אבי": 2, "בני": 1 });
+  });
+});
+
+describe("week helpers", () => {
+  it("toISODateLocal ו-parseISODate הם הפוכים זה של זה", () => {
+    const iso = "2026-07-12";
+    expect(toISODateLocal(parseISODate(iso))).toBe(iso);
+  });
+
+  it("getWeekDays מעוגן ליום ראשון גם כשה-weekStart אינו יום ראשון", () => {
+    const wednesday = new Date(2026, 6, 15);
+    expect(getWeekDays(wednesday, [0, 4])).toEqual(["2026-07-12", "2026-07-16"]);
+  });
+});

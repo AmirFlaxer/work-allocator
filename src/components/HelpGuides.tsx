@@ -68,7 +68,7 @@ export function GuidesBanner() {
   };
 
   return (
-    <div className="flex flex-wrap items-center gap-3 p-4 rounded-2xl border border-primary/25 bg-primary/5">
+    <div className="flex flex-wrap items-center gap-3 p-4 rounded-2xl border border-primary/25 bg-primary/5 print:hidden">
       <div className="w-9 h-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
         <Rocket className="h-4 w-4" />
       </div>

@@ -1,7 +1,7 @@
 import { WeeklySchedule, Station } from "@/types/employee";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowRight, TrendingUp } from "lucide-react";
+import { ArrowLeft, TrendingUp } from "lucide-react";
 import { getWeekDays, cellNames, stationSlots, parseISODate } from "@/lib/week";
 
 interface ScheduleChangesProps {
@@ -52,12 +52,12 @@ export function ScheduleChanges({ currentSchedule, previousSchedule, stations, c
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">
             <TrendingUp className="h-5 w-5" />
-            השוואה לשבוע הקודם
+            שינויים מהגרסה הקודמת
           </CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-muted-foreground text-center py-4">
-            אין שינויים משבוע קודם
+            אין שינויים מהגרסה הקודמת של השיבוץ
           </p>
         </CardContent>
       </Card>
@@ -69,10 +69,10 @@ export function ScheduleChanges({ currentSchedule, previousSchedule, stations, c
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-lg">
           <TrendingUp className="h-5 w-5" />
-          השוואה לשבוע הקודם
+          שינויים מהגרסה הקודמת
         </CardTitle>
         <CardDescription>
-          נמצאו {changes.length} שינויים בשיבוץ
+          נמצאו {changes.length} שינויים לעומת הגרסה הקודמת של השיבוץ
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -95,7 +95,7 @@ export function ScheduleChanges({ currentSchedule, previousSchedule, stations, c
                 </div>
                 <div className="flex items-center gap-2 text-sm">
                   <Badge variant="secondary">{change.previousEmployee}</Badge>
-                  <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                  <ArrowLeft className="h-4 w-4 text-muted-foreground" />
                   <Badge variant="default">{change.currentEmployee}</Badge>
                 </div>
               </div>

@@ -21,8 +21,11 @@ interface AuthContextValue {
   profile: Profile | null;
   org: Organization | null;
   loading: boolean;
+  /** המשתמש מאומת אבל אין לו פרופיל - הרשמה שנקטעה באמצע */
+  profileMissing: boolean;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signUp: (email: string, password: string, orgName: string, fullName: string) => Promise<{ error: string | null }>;
+  completeRegistration: (orgName: string, fullName: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
 }
 
@@ -33,14 +36,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [org, setOrg]         = useState<Organization | null>(null);
   const [loading, setLoading] = useState(isSupabaseConfigured);
+  const [profileMissing, setProfileMissing] = useState(false);
 
   const loadProfile = async (userId: string) => {
     if (!supabase) return;
-    const { data: p } = await supabase.from("profiles").select("*").eq("id", userId).single();
-    if (!p) return;
+    const { data: p } = await supabase.from("profiles").select("*").eq("id", userId).maybeSingle();
+    if (!p) { setProfileMissing(true); return; }
+    setProfileMissing(false);
     setProfile(p);
     const { data: o } = await supabase.from("organizations").select("*").eq("id", p.org_id).single();
     if (o) setOrg(o);
+  };
+
+  // Registration is three separate inserts (user, org, profile) - if it dies in
+  // the middle the user ends up authenticated but without a profile. This
+  // creates the missing org+profile so they can finish onboarding.
+  const createOrgAndProfile = async (userId: string, email: string | null, orgName: string, fullName: string) => {
+    if (!supabase) return { error: "Supabase לא מוגדר" };
+    const orgId = crypto.randomUUID();
+    const { error: orgError } = await supabase
+      .from("organizations").insert({ id: orgId, name: orgName });
+    if (orgError) return { error: "שגיאה ביצירת הארגון - נסה שוב" };
+    const { error: profileError } = await supabase
+      .from("profiles").insert({ id: userId, org_id: orgId, role: "admin", full_name: fullName, email });
+    if (profileError) return { error: "שגיאה ביצירת הפרופיל - נסה שוב" };
+    await loadProfile(userId);
+    return { error: null };
+  };
+
+  const completeRegistration = async (orgName: string, fullName: string) => {
+    if (!user) return { error: "לא מחובר" };
+    return createOrgAndProfile(user.id, user.email ?? null, orgName, fullName);
   };
 
   useEffect(() => {
@@ -81,17 +107,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (authError) return { error: "שגיאה בהרשמה - בדוק שהמייל תקין והסיסמה ארוכה מ-6 תווים" };
     if (!data.user) return { error: "שגיאה ביצירת המשתמש" };
 
-    const orgId = crypto.randomUUID();
-    const { error: orgError } = await supabase
-      .from("organizations").insert({ id: orgId, name: orgName });
-    if (orgError) return { error: "שגיאה ביצירת הארגון - נסה שוב" };
-
-    const { error: profileError } = await supabase
-      .from("profiles").insert({ id: data.user.id, org_id: orgId, role: "admin", full_name: fullName, email });
-    if (profileError) return { error: "שגיאה ביצירת הפרופיל - נסה שוב" };
-
-    await loadProfile(data.user.id);
-    return { error: null };
+    return createOrgAndProfile(data.user.id, email, orgName, fullName);
   };
 
   const signOut = async () => {
@@ -100,10 +116,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
     setProfile(null);
     setOrg(null);
+    setProfileMissing(false);
   };
 
   return (
-    <AuthContext.Provider value={{ user, profile, org, loading, signIn, signUp, signOut }}>
+    <AuthContext.Provider value={{ user, profile, org, loading, profileMissing, signIn, signUp, completeRegistration, signOut }}>
       {children}
     </AuthContext.Provider>
   );

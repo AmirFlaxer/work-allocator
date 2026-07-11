@@ -1,6 +1,5 @@
 import React from "react";
 import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { DirectionProvider } from "@radix-ui/react-direction";
@@ -8,7 +7,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { isSupabaseConfigured } from "@/lib/supabase";
-import { LoginPage } from "@/pages/LoginPage";
+import { LoginPage, CompleteRegistrationPage } from "@/pages/LoginPage";
 import { RegistrantsPage } from "@/pages/RegistrantsPage";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
@@ -29,7 +28,7 @@ function SuperAdminRoute({ children }: { children: React.ReactNode }) {
 }
 
 function AppContent() {
-  const { user, loading } = useAuth();
+  const { user, loading, profileMissing } = useAuth();
 
   if (loading) {
     return (
@@ -46,6 +45,10 @@ function AppContent() {
     return <LoginPage />;
   }
 
+  if (isSupabaseConfigured && user && profileMissing) {
+    return <CompleteRegistrationPage />;
+  }
+
   return (
     <Routes>
       <Route path="/" element={<Index />} />
@@ -60,7 +63,6 @@ const App = () => (
     <DirectionProvider dir="rtl">
       <TooltipProvider>
         <Toaster />
-        <Sonner />
         <BrowserRouter>
           <AuthProvider>
             <AppContent />

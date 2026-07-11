@@ -100,7 +100,7 @@ export function WeeklyPreferences({ employees, stations, weekStart, activeDays, 
           {/* Summary badges */}
           <div className="flex flex-wrap gap-2">
             {selectedEmp.hasStar && (
-              <Badge className="bg-yellow-100 text-yellow-700 border-yellow-200">
+              <Badge className="bg-yellow-100 text-yellow-700 border-yellow-200 dark:bg-yellow-900/40 dark:text-yellow-300 dark:border-yellow-800">
                 ⭐ עדיפות גבוהה
               </Badge>
             )}
@@ -115,7 +115,7 @@ export function WeeklyPreferences({ employees, stations, weekStart, activeDays, 
               </Badge>
             )}
             {selectedEmp.maxWeeklyShifts !== undefined && (
-              <Badge variant="outline" className="border-orange-200 text-orange-700">
+              <Badge variant="outline" className="border-orange-200 text-orange-700 dark:border-orange-800 dark:text-orange-300">
                 מקס׳ {selectedEmp.maxWeeklyShifts} משמרות/שבוע
               </Badge>
             )}
@@ -131,7 +131,7 @@ export function WeeklyPreferences({ employees, stations, weekStart, activeDays, 
                   <div
                     key={date}
                     className={`flex items-center space-x-2 space-x-reverse rounded-md px-3 py-2 transition-colors ${
-                      isUnavailable ? "bg-red-50 border border-red-200" : ""
+                      isUnavailable ? "bg-red-50 border border-red-200 dark:bg-red-950/30 dark:border-red-900" : ""
                     }`}
                   >
                     <Checkbox

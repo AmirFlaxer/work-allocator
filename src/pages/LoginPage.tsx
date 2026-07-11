@@ -20,6 +20,66 @@ function isPasswordValid(p: string) {
   return PASSWORD_RULES.every(r => r.test(p));
 }
 
+// Shown when a user is authenticated but has no profile - a registration that
+// was interrupted after the auth user was created (e.g. failed org insert or
+// email-confirmation flow). Lets them finish creating the org and profile.
+export function CompleteRegistrationPage() {
+  const { user, completeRegistration, signOut } = useAuth();
+  const { toast } = useToast();
+  const [loading, setLoading]   = useState(false);
+  const [orgName, setOrgName]   = useState("");
+  const [fullName, setFullName] = useState("");
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    const { error } = await completeRegistration(orgName.trim(), fullName.trim());
+    if (error) toast({ title: "שגיאה", description: error, variant: "destructive" });
+    else toast({ title: "ברוך הבא!", description: `הארגון "${orgName}" נוצר בהצלחה` });
+    setLoading(false);
+  };
+
+  return (
+    <div className="min-h-screen bg-background flex items-center justify-center px-6" dir="rtl">
+      <Card className="w-full max-w-md shadow-xl border-border/40">
+        <CardContent className="pt-6 space-y-4">
+          <div className="flex items-center gap-2.5">
+            <span className="w-6 h-0.5 bg-primary" />
+            <span className="text-[11px] tracking-[0.2em] uppercase font-bold text-primary">השלמת הרשמה</span>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            החשבון {user?.email} קיים אבל ההרשמה לא הושלמה. השלם את פרטי הארגון כדי להתחיל.
+          </p>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">שם הארגון</Label>
+              <div className="relative">
+                <Building2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input value={orgName} onChange={e => setOrgName(e.target.value)}
+                  placeholder="בית חולים / מרפאה / עסק..." className="pr-9" required />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">שמך המלא</Label>
+              <div className="relative">
+                <User className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input value={fullName} onChange={e => setFullName(e.target.value)}
+                  placeholder="ישראל ישראלי" className="pr-9" required />
+              </div>
+            </div>
+            <Button type="submit" className="w-full bg-primary hover:bg-primary/90" disabled={loading}>
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "השלם הרשמה"}
+            </Button>
+            <Button type="button" variant="ghost" className="w-full text-muted-foreground" onClick={signOut}>
+              התנתק וחזור למסך הכניסה
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 export function LoginPage() {
   const { signIn, signUp } = useAuth();
   const { toast } = useToast();

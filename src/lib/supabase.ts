@@ -3,21 +3,13 @@ import { createClient } from "@supabase/supabase-js";
 /*
  * ── Supabase Setup ──────────────────────────────────────────────────────────
  *
- * Run the following SQL in your Supabase project (SQL Editor):
+ * The full multi-tenant schema (organizations, profiles, app_store with org
+ * isolation via RLS) lives in supabase_migration.sql at the repo root - run it
+ * in the Supabase SQL Editor. Do NOT create tables by hand from memory: the
+ * app relies on org_id scoping and the RLS policies defined there.
  *
- *   CREATE TABLE app_store (
- *     key TEXT PRIMARY KEY,
- *     value JSONB NOT NULL,
- *     updated_at TIMESTAMPTZ DEFAULT NOW()
- *   );
- *
- *   ALTER TABLE app_store ENABLE ROW LEVEL SECURITY;
- *   CREATE POLICY "Allow all" ON app_store FOR ALL USING (true) WITH CHECK (true);
- *
- * Then enable Realtime for the table:
- *   Supabase Dashboard → Database → Replication → app_store ✓
- *
- * Finally fill in .env.local with your project URL and anon key.
+ * Then fill in .env.local with the project URL and anon key
+ * (VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY).
  * ────────────────────────────────────────────────────────────────────────────
  */
 

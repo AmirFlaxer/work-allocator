@@ -5,6 +5,16 @@ const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY")!;
 const OWNER_EMAIL   = "benqueman@gmail.com";
 const APP_NAME      = "מחלק עבודה שבועי";
 
+// שם/מייל/ארגון הם קלט משתמש שמשורבב ל-HTML של המייל - חובה להבריח.
+function escapeHtml(s: string): string {
+  return s
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
 serve(async (req) => {
   try {
     const payload = await req.json();
@@ -15,6 +25,8 @@ serve(async (req) => {
       org_id: string;
       created_at: string | null;
     };
+    const safeName  = record.full_name ? escapeHtml(record.full_name.slice(0, 200)) : null;
+    const safeEmail = record.email ? escapeHtml(record.email.slice(0, 200)) : null;
 
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
@@ -40,14 +52,14 @@ serve(async (req) => {
       body: JSON.stringify({
         from: "Work Allocator <onboarding@resend.dev>",
         to: OWNER_EMAIL,
-        subject: `נרשם חדש ל-${APP_NAME}: ${record.full_name ?? record.email}`,
+        subject: `נרשם חדש ל-${APP_NAME}: ${record.full_name?.slice(0, 200) ?? record.email?.slice(0, 200)}`,
         html: `
           <div dir="rtl" style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px;border:1px solid #e2e8f0;border-radius:12px;">
             <h2 style="color:#4f46e5;margin-top:0">נרשם חדש!</h2>
             <table style="width:100%;border-collapse:collapse">
-              <tr><td style="padding:6px 0;color:#64748b;width:90px">שם</td><td style="padding:6px 0;font-weight:600">${record.full_name ?? "—"}</td></tr>
-              <tr><td style="padding:6px 0;color:#64748b">מייל</td><td style="padding:6px 0">${record.email ?? "—"}</td></tr>
-              <tr><td style="padding:6px 0;color:#64748b">ארגון</td><td style="padding:6px 0">${org?.name ?? "—"}</td></tr>
+              <tr><td style="padding:6px 0;color:#64748b;width:90px">שם</td><td style="padding:6px 0;font-weight:600">${safeName ?? "—"}</td></tr>
+              <tr><td style="padding:6px 0;color:#64748b">מייל</td><td style="padding:6px 0">${safeEmail ?? "—"}</td></tr>
+              <tr><td style="padding:6px 0;color:#64748b">ארגון</td><td style="padding:6px 0">${org?.name ? escapeHtml(String(org.name).slice(0, 200)) : "—"}</td></tr>
               <tr><td style="padding:6px 0;color:#64748b">תאריך</td><td style="padding:6px 0">${registeredAt}</td></tr>
             </table>
             <hr style="margin:20px 0;border:none;border-top:1px solid #e2e8f0"/>

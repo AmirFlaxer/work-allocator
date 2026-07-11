@@ -33,6 +33,12 @@ import * as XLSX from "xlsx";
 import { toPng } from "html-to-image";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
+import {
+  Plan, ENFORCE_QUOTA, FREE_EMPLOYEE_LIMIT, FREE_STATION_LIMIT,
+  getOrgPlan, isOverEmployeeQuota, isOverStationQuota,
+  canUseMultiSlotStations, canUseMonthlyReports,
+} from "@/lib/plan";
+import { UpgradeDialog } from "@/components/UpgradeDialog";
 
 function getNextSunday(date: Date): Date {
   const result = new Date(date);
@@ -40,7 +46,11 @@ function getNextSunday(date: Date): Date {
   return result;
 }
 
-function getWeekNumber(date: Date): number {
+// מספר שבוע ISO. שבוע ISO מתחיל ביום שני, בעוד weekStart שלנו הוא יום ראשון -
+// לכן מחשבים לפי יום שני של שבוע העבודה (יום אחרי), אחרת המספר שייך לשבוע הקודם.
+function getWeekNumber(weekStart: Date): number {
+  const date = new Date(weekStart);
+  date.setDate(date.getDate() + 1);
   const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
   const dayNum = (d.getUTCDay() + 6) % 7;
   d.setUTCDate(d.getUTCDate() - dayNum + 3);
@@ -59,9 +69,29 @@ function formatWeekRange(weekStart: Date, activeDays: number[]): string {
 
 const MAX_HISTORY = 30;
 
+// כל המפתחות המקומיים שמחזיקים נתוני ארגון (לא העדפות מכשיר כמו darkMode).
+const ORG_DATA_KEYS = [
+  "employees", "stations", "schedule", "weekStart", "savedSchedules",
+  "scheduleTemplates", "lockedCells", "auditLog", "cellColors", "activeDays",
+];
+
 const Index = () => {
   const { toast } = useToast();
   const { user, profile, org, signOut } = useAuth();
+
+  // המטמון המקומי אינו ממורחב לפי ארגון - אם התחבר כאן ארגון אחר, מנקים את
+  // הנתונים שלו לפני שה-state מאותחל מהם (הבהוב נתונים זרים + סנכרון שגוי).
+  // useMemo ולא useEffect: חייב לרוץ לפני אתחולי ה-useState שקוראים מהמטמון.
+  useMemo(() => {
+    if (!isSupabaseConfigured || !profile?.org_id) return;
+    try {
+      if (localStorage.getItem("localOrgId") !== profile.org_id) {
+        ORG_DATA_KEYS.forEach(k => localStorage.removeItem(k));
+        localStorage.setItem("localOrgId", profile.org_id);
+      }
+    } catch { /* localStorage לא זמין - ממשיכים */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ── Dark mode ──────────────────────────────────────────
   const [darkMode, setDarkMode] = useState(() => {
@@ -175,20 +205,37 @@ const Index = () => {
   // ── Import ref ─────────────────────────────────────────
   const importInputRef = useRef<HTMLInputElement>(null);
 
+  // ── Plan (freemium - רדום כל עוד ENFORCE_QUOTA כבוי) ───
+  const [plan, setPlan] = useState<Plan>("free");
+  const [upgradeReason, setUpgradeReason] = useState<string | null>(null);
+
+  useEffect(() => {
+    // אין טעם לשלוף את התוכנית כשהאכיפה כבויה - הכל מותר ממילא.
+    if (!ENFORCE_QUOTA || !isSupabaseConfigured || !profile?.org_id) return;
+    getOrgPlan(profile.org_id).then(setPlan);
+  }, [profile?.org_id]);
+
   // ── Supabase sync ──────────────────────────────────────
   const [syncStatus, setSyncStatus] = useState<"idle" | "syncing" | "synced" | "error">(
     isSupabaseConfigured ? "syncing" : "idle"
   );
   const isRemoteUpdate = useRef(false);
   const hasLoaded      = useRef(!isSupabaseConfigured);
+  const syncTimers     = useRef<{ [key: string]: ReturnType<typeof setTimeout> }>({});
 
   // ── Persist to localStorage + Supabase ─────────────────
+  // Debounced per key: rapid edits (e.g. filling several cells) collapse into
+  // one upsert of the latest value instead of a full upload per keystroke.
   const syncToSupabase = useCallback((key: string, value: unknown) => {
     if (!isSupabaseConfigured || isRemoteUpdate.current || !profile?.org_id || !hasLoaded.current) return;
     setSyncStatus("syncing");
-    supabase!.from("app_store")
-      .upsert({ key, org_id: profile.org_id, value, updated_at: new Date().toISOString() })
-      .then(({ error }) => setSyncStatus(error ? "error" : "synced"));
+    clearTimeout(syncTimers.current[key]);
+    syncTimers.current[key] = setTimeout(() => {
+      delete syncTimers.current[key];
+      supabase!.from("app_store")
+        .upsert({ key, org_id: profile.org_id, value, updated_at: new Date().toISOString() })
+        .then(({ error }) => setSyncStatus(error ? "error" : "synced"));
+    }, 500);
   }, [profile?.org_id]);
 
   useEffect(() => { localStorage.setItem("employees", JSON.stringify(employees)); syncToSupabase("employees", employees); }, [employees, syncToSupabase]);
@@ -209,9 +256,8 @@ const Index = () => {
       if (error || !data) { setSyncStatus("error"); return; }
       isRemoteUpdate.current = true;
       const store = Object.fromEntries(data.map(r => [r.key, r.value]));
-      const LOCAL_KEYS = ["employees","stations","schedule","weekStart","savedSchedules","scheduleTemplates","lockedCells","auditLog","cellColors","activeDays"];
       if (data.length === 0) {
-        LOCAL_KEYS.forEach(k => localStorage.removeItem(k));
+        ORG_DATA_KEYS.forEach(k => localStorage.removeItem(k));
         setEmployees([]); setStations([]); setSchedule(null);
         setSavedSchedules([]); setTemplates([]); setLockedCells(new Set()); setAuditLog({});
         setCellColors(true);
@@ -245,9 +291,10 @@ const Index = () => {
     const channel = supabase!
       .channel("app_store_realtime")
       .on("postgres_changes", {
-        event: "UPDATE", schema: "public", table: "app_store",
+        event: "*", schema: "public", table: "app_store",
         filter: `org_id=eq.${profile.org_id}`,
       }, ({ new: row }) => {
+        if (!row || !("key" in (row as object))) return;
         const { key, value } = row as { key: string; value: unknown };
         isRemoteUpdate.current = true;
         if (key === "employees")         setEmployees(value as Employee[]);
@@ -271,9 +318,42 @@ const Index = () => {
   }, [profile?.org_id]);
 
   // ── Employee handlers ──────────────────────────────────
+  // Schedule cells store employee names, so a rename must propagate to every
+  // schedule copy (current, archive, templates) or the cells become orphans.
+  const renameInSchedule = (sched: WeeklySchedule, from: string, to: string): WeeklySchedule =>
+    Object.fromEntries(Object.entries(sched).map(([date, day]) => [
+      date,
+      Object.fromEntries(Object.entries(day).map(([stId, cell]) => [
+        stId,
+        cellNames(cell).map(n => (n === from ? to : n)),
+      ])),
+    ]));
+
   const handleSaveEmployee = (data: Omit<Employee, "id"> & { id?: string }) => {
+    // The name is the employee's identity across the whole app (schedule cells,
+    // workloads, colors) - duplicates would merge two people into one.
+    const name = data.name.trim();
+    if (!name) {
+      toast({ title: "שגיאה", description: "יש להזין שם עובד", variant: "destructive" });
+      return;
+    }
+    if (employees.some(e => e.id !== data.id && e.name === name)) {
+      toast({ title: "שם כפול", description: `כבר קיים עובד בשם "${name}" - בחר שם אחר`, variant: "destructive" });
+      return;
+    }
+    if (!data.id && isOverEmployeeQuota(plan, employees.length)) {
+      setUpgradeReason(`התוכנית החינמית מוגבלת ל-${FREE_EMPLOYEE_LIMIT} עובדים.`);
+      return;
+    }
+    data = { ...data, name };
     if (data.id) {
+      const oldName = employees.find(e => e.id === data.id)?.name;
       setEmployees(prev => prev.map(e => e.id === data.id ? data as Employee : e));
+      if (oldName && oldName !== data.name) {
+        setSchedule(prev => prev ? renameInSchedule(prev, oldName, data.name) : prev);
+        setSavedSchedules(prev => prev.map(s => ({ ...s, schedule: renameInSchedule(s.schedule, oldName, data.name) })));
+        setTemplates(prev => prev.map(t => ({ ...t, schedule: renameInSchedule(t.schedule, oldName, data.name) })));
+      }
       toast({ title: "העובד עודכן" });
     } else {
       setEmployees(prev => [...prev, { ...data, id: Date.now().toString() }]);
@@ -284,7 +364,11 @@ const Index = () => {
   };
 
   const handleDeleteEmployee = (id: string) => {
+    const emp = employees.find(e => e.id === id);
     setEmployees(prev => prev.filter(e => e.id !== id));
+    // Clear the employee's cells in the current schedule; archive and templates
+    // are historical records and keep the name.
+    if (emp) setSchedule(prev => prev ? renameInSchedule(prev, emp.name, "") : prev);
     toast({ title: "העובד נמחק" });
   };
 
@@ -294,18 +378,51 @@ const Index = () => {
 
   // ── Station handlers ───────────────────────────────────
   const handleAddStation = (name: string, requiredCount: number) => {
+    if (isOverStationQuota(plan, stations.length)) {
+      setUpgradeReason(`התוכנית החינמית מוגבלת ל-${FREE_STATION_LIMIT} עמדות.`);
+      return;
+    }
+    if (requiredCount > 1 && !canUseMultiSlotStations(plan)) {
+      setUpgradeReason("עמדה עם יותר מעובד אחד בו-זמנית זמינה בתוכנית Pro.");
+      return;
+    }
     const newId = stations.length > 0 ? Math.max(...stations.map(s => s.id)) + 1 : 1;
     setStations(prev => [...prev, { id: newId, name, requiredCount }]);
     toast({ title: "העמדה נוספה" });
   };
 
   const handleEditStation = (id: number, name: string, requiredCount: number) => {
+    const current = stations.find(s => s.id === id);
+    if (requiredCount > 1 && (current?.requiredCount ?? 1) <= 1 && !canUseMultiSlotStations(plan)) {
+      setUpgradeReason("עמדה עם יותר מעובד אחד בו-זמנית זמינה בתוכנית Pro.");
+      return;
+    }
     setStations(prev => prev.map(s => s.id === id ? { ...s, name, requiredCount } : s));
     toast({ title: "העמדה עודכנה" });
   };
 
+  const [stationToDelete, setStationToDelete] = useState<Station | null>(null);
+
   const handleDeleteStation = (id: number) => {
     setStations(prev => prev.filter(s => s.id !== id));
+    // Cascade: drop the station's cells, locks and audit entries, and remove it
+    // from employees' station lists (unless it's their only station - then the
+    // stale id is kept so the employee stays restricted and visibly needs fixing).
+    setSchedule(prev => {
+      if (!prev) return prev;
+      return Object.fromEntries(Object.entries(prev).map(([date, day]) =>
+        [date, Object.fromEntries(Object.entries(day).filter(([stId]) => Number(stId) !== id))]
+      ));
+    });
+    const belongsToStation = (key: string) => key.split("__")[1] === String(id);
+    setLockedCells(prev => new Set([...prev].filter(k => !belongsToStation(k))));
+    setAuditLog(prev => Object.fromEntries(Object.entries(prev).filter(([k]) => !belongsToStation(k))));
+    setEmployees(prev => prev.map(e => {
+      const remaining = e.availableStations.filter(s => s !== id);
+      return e.availableStations.includes(id) && remaining.length > 0
+        ? { ...e, availableStations: remaining }
+        : e;
+    }));
     toast({ title: "העמדה נמחקה" });
   };
 
@@ -316,6 +433,22 @@ const Index = () => {
       return;
     }
     if (schedule) setPreviousSchedule(schedule);
+
+    // ניקוי אגבי: תאריכי העדפות שכבר עברו (לפני השבוע האמיתי הנוכחי) לא
+    // ישפיעו על שום שיבוץ עתידי - בלי ניקוי הם נערמים על העובד לנצח.
+    const todaySunday = getWeekDays(new Date(), [0])[0];
+    setEmployees(prev => {
+      let changed = false;
+      const next = prev.map(e => {
+        const unavailable = e.unavailableDays?.filter(d => d >= todaySunday);
+        const requests = e.specificRequests?.filter(r => r.date >= todaySunday);
+        if ((unavailable?.length ?? 0) === (e.unavailableDays?.length ?? 0) &&
+            (requests?.length ?? 0) === (e.specificRequests?.length ?? 0)) return e;
+        changed = true;
+        return { ...e, unavailableDays: unavailable, specificRequests: requests };
+      });
+      return changed ? next : prev;
+    });
 
     let baseSchedule: WeeklySchedule | null = null;
     if (keepLocked && schedule) {
@@ -445,9 +578,13 @@ const Index = () => {
         const ws = wb.Sheets[wb.SheetNames[0]];
         const rows: string[][] = XLSX.utils.sheet_to_json(ws, { header: 1 });
         const newEmployees: Employee[] = [];
+        const existingNames = new Set(employees.map(e => e.name));
+        let skippedDuplicates = 0;
         rows.slice(1).forEach(row => {
           const name = row[0]?.toString().trim();
           if (!name) return;
+          if (existingNames.has(name)) { skippedDuplicates++; return; }
+          existingNames.add(name);
           const stationNames = (row[1] || "").toString().split(",").map(s => s.trim()).filter(Boolean);
           const stationIds = stationNames
             .map(sName => stations.find(s => s.name === sName)?.id)
@@ -465,9 +602,18 @@ const Index = () => {
             notes,
           });
         });
+        if (newEmployees.length > 0 && isOverEmployeeQuota(plan, employees.length + newEmployees.length - 1)) {
+          setUpgradeReason(`הייבוא יביא את מספר העובדים מעבר למכסת ${FREE_EMPLOYEE_LIMIT} העובדים של התוכנית החינמית.`);
+          return;
+        }
         if (newEmployees.length > 0) {
           setEmployees(prev => [...prev, ...newEmployees]);
-          toast({ title: `יובאו ${newEmployees.length} עובדים` });
+          toast({
+            title: `יובאו ${newEmployees.length} עובדים`,
+            description: skippedDuplicates > 0 ? `${skippedDuplicates} שורות דולגו - שם שכבר קיים` : undefined,
+          });
+        } else if (skippedDuplicates > 0) {
+          toast({ title: "לא יובא אף עובד", description: `כל ${skippedDuplicates} השמות בקובץ כבר קיימים`, variant: "destructive" });
         } else {
           toast({ title: "לא נמצאו עובדים בקובץ", variant: "destructive" });
         }
@@ -528,6 +674,27 @@ const Index = () => {
     if (!schedule) return;
     const name1 = cellNames(schedule[date1]?.[stationId1])[slot1] ?? "";
     const name2 = cellNames(schedule[date2]?.[stationId2])[slot2] ?? "";
+
+    // A swap never adds work days, but it can land someone twice on the same
+    // day - enforce the daily cap for each name that moves to a new date.
+    const violatesDailyCap = (name: string, targetDate: string, sourceDate: string): boolean => {
+      if (!name || targetDate === sourceDate) return false;
+      const employee = employees.find(e => e.name === name);
+      const cap = employee ? dailyShiftCap(employee) : 1;
+      const count = stations.reduce((acc, st) =>
+        acc + cellNames(schedule[targetDate]?.[st.id]).filter((n, i) =>
+          n === name &&
+          !(targetDate === date1 && st.id === stationId1 && i === slot1) &&
+          !(targetDate === date2 && st.id === stationId2 && i === slot2)
+        ).length, 0);
+      return count + 1 > cap;
+    };
+    if (violatesDailyCap(name1, date2, date1) || violatesDailyCap(name2, date1, date2)) {
+      const who = violatesDailyCap(name1, date2, date1) ? name1 : name2;
+      toast({ title: "ההחלפה חורגת ממקסימום שיבוצים ביום", description: `${who} כבר משובץ ביום זה`, variant: "destructive" });
+      return;
+    }
+
     addAuditEntry(date1, stationId1, slot1, name1, name2);
     addAuditEntry(date2, stationId2, slot2, name2, name1);
     setSchedule(prev => {
@@ -626,7 +793,7 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background" dir="rtl">
       {/* ── Header ── */}
-      <header className="sticky top-0 z-10 border-b border-border glass">
+      <header className="sticky top-0 z-10 border-b border-border glass print:hidden">
         <div className="container mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <img src="/logo.svg" alt="לוגו" className="w-8 h-8 rounded-lg shrink-0" />
@@ -652,7 +819,11 @@ const Index = () => {
                 {syncStatus === "error"   && <CloudOff className="h-4 w-4 text-destructive" />}
               </div>
             )}
-            {!isSupabaseConfigured && <CloudOff className="h-4 w-4 text-muted-foreground/40" title="נתונים מקומיים בלבד" />}
+            {!isSupabaseConfigured && (
+              <div title="נתונים מקומיים בלבד">
+                <CloudOff className="h-4 w-4 text-muted-foreground/40" />
+              </div>
+            )}
 
             <HelpDialog />
 
@@ -679,7 +850,7 @@ const Index = () => {
       <main className="container mx-auto px-4 py-6 space-y-6">
         <GuidesBanner />
         <Tabs defaultValue="schedule" className="space-y-6">
-          <TabsList className="h-auto bg-transparent p-0 gap-7 justify-start rounded-none border-b border-border">
+          <TabsList className="h-auto bg-transparent p-0 gap-7 justify-start rounded-none border-b border-border print:hidden">
             <TabsTrigger value="stations" className="bg-transparent rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-foreground text-muted-foreground gap-2 px-0 py-2.5 text-sm font-medium transition-all">
               <span className="index-num">01</span> עמדות והגדרות
             </TabsTrigger>
@@ -731,7 +902,8 @@ const Index = () => {
                 })}
               </div>
             </Card>
-            <StationManager stations={stations} onAdd={handleAddStation} onEdit={handleEditStation} onDelete={handleDeleteStation} />
+            <StationManager stations={stations} onAdd={handleAddStation} onEdit={handleEditStation}
+              onDelete={id => setStationToDelete(stations.find(s => s.id === id) ?? null)} />
           </TabsContent>
 
           {/* ── Employees ── */}
@@ -765,6 +937,7 @@ const Index = () => {
               <EmployeeForm
                 employee={editingEmployee || undefined}
                 stations={stations}
+                activeDays={activeDays}
                 onSave={handleSaveEmployee}
                 onCancel={() => { setShowEmployeeForm(false); setEditingEmployee(null); }}
               />
@@ -1038,7 +1211,7 @@ const Index = () => {
                   <Switch id="show-changes" checked={showChanges} onCheckedChange={setShowChanges} />
                   <Label htmlFor="show-changes" className="cursor-pointer flex items-center gap-2">
                     {showChanges ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-                    השוואה לשבוע הקודם
+                    שינויים מהגרסה הקודמת
                   </Label>
                 </div>
 
@@ -1102,16 +1275,50 @@ const Index = () => {
 
           {/* ── Reports ── */}
           <TabsContent value="reports" className="space-y-6">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 print:hidden">
               <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
                 <BarChart2 className="h-4 w-4" />
               </div>
               <h2 className="text-xl font-extrabold">דוחות לחשבות</h2>
             </div>
-            <MonthlyReport savedSchedules={savedSchedules} stations={stations} />
+            {canUseMonthlyReports(plan) ? (
+              <MonthlyReport savedSchedules={savedSchedules} stations={stations} />
+            ) : (
+              <div className="text-center py-16 bg-primary/5 border-2 border-dashed border-border rounded-2xl">
+                <p className="text-lg font-semibold mb-1">דוחות חודשיים - תוכנית Pro</p>
+                <p className="text-muted-foreground text-sm">
+                  דוחות שכר חודשיים, דוחות עמדות וגרפים היסטוריים זמינים בתוכנית Pro.
+                  פנו אלינו דרך "צור קשר עם המפתח" שבכותרת.
+                </p>
+              </div>
+            )}
           </TabsContent>
         </Tabs>
       </main>
+
+      {/* Upgrade (freemium) dialog */}
+      <UpgradeDialog reason={upgradeReason} onClose={() => setUpgradeReason(null)} />
+
+      {/* Station delete confirmation */}
+      <AlertDialog open={stationToDelete !== null} onOpenChange={open => { if (!open) setStationToDelete(null); }}>
+        <AlertDialogContent dir="rtl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>למחוק את העמדה "{stationToDelete?.name}"?</AlertDialogTitle>
+            <AlertDialogDescription>
+              המחיקה תסיר גם את השיבוצים, הנעילות והיסטוריית השינויים של העמדה בשבוע הנוכחי, ואת העמדה מרשימת העמדות של העובדים.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-row-reverse gap-2">
+            <AlertDialogAction
+              className="bg-destructive hover:bg-destructive/90"
+              onClick={() => { if (stationToDelete) handleDeleteStation(stationToDelete.id); setStationToDelete(null); }}
+            >
+              מחק עמדה
+            </AlertDialogAction>
+            <AlertDialogCancel>ביטול</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Lock warning dialog */}
       <AlertDialog open={lockWarningOpen} onOpenChange={setLockWarningOpen}>

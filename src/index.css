@@ -146,3 +146,11 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* Touch screens have no hover - controls hidden behind group-hover would be
+   undiscoverable. Show them at partial opacity instead. */
+@media (hover: none) {
+  .touch-visible {
+    opacity: 0.55;
+  }
+}
