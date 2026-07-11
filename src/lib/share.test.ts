@@ -23,7 +23,7 @@ const stations = [st(1, "קבלה", 2), st(2, "מוקד")];
 describe("buildPublishedPayload", () => {
   it("אורז את כל הנתונים הדרושים לצופה", () => {
     const p = buildPublishedPayload(employees, stations, schedule, WEEK_START, [0, 1]);
-    expect(p.weekStart).toBe(WEEK_START.toISOString());
+    expect(p.weekStart).toBe("2026-07-12");
     expect(p.activeDays).toEqual([0, 1]);
     expect(p.stations).toEqual([
       { id: 1, name: "קבלה", requiredCount: 2 },
@@ -81,5 +81,12 @@ describe("viewer helpers", () => {
 
   it("מזהה שלא ברשימה - רשימת משמרות ריקה", () => {
     expect(viewerShifts(payload, "zzz")).toEqual([]);
+  });
+
+  it("weekStart בשעת ערב - עדיין אותו יום מקומי, אותם משמרות", () => {
+    const eveningStart = new Date(2026, 6, 12, 23, 30);
+    const eveningPayload = buildPublishedPayload(employees, stations, schedule, eveningStart, [0, 1]);
+    expect(eveningPayload.weekStart).toBe("2026-07-12");
+    expect(viewerShifts(eveningPayload, "e1")).toEqual(viewerShifts(payload, "e1"));
   });
 });

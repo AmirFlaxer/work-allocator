@@ -54,7 +54,7 @@ export function SharePage() {
   const { payload, publishedAt, viewerEmployeeId } = state.data;
   const myName = viewerName(payload, viewerEmployeeId);
   const myShifts = viewerShifts(payload, viewerEmployeeId);
-  const weekDays = getWeekDays(new Date(payload.weekStart), payload.activeDays);
+  const weekDays = getWeekDays(parseISODate(payload.weekStart), payload.activeDays);
   const hebrewDays = getHebrewDayLabels(payload.activeDays);
 
   return (

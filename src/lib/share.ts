@@ -1,8 +1,9 @@
 import { Employee, Station, WeeklySchedule } from "@/types/employee";
-import { getWeekDays, getHebrewDayLabels, cellNames } from "@/lib/week";
+import { getWeekDays, getHebrewDayLabels, cellNames, toISODateLocal, parseISODate } from "@/lib/week";
 
 /** ה-snapshot שנשמר ב-published_schedules.payload - כל מה שהצופה צריך. */
 export interface PublishedPayload {
+  /** YYYY-MM-DD מקומי */
   weekStart: string;
   activeDays: number[];
   stations: { id: number; name: string; requiredCount?: number }[];
@@ -28,7 +29,7 @@ export function buildPublishedPayload(
   activeDays: number[],
 ): PublishedPayload {
   return {
-    weekStart: weekStart.toISOString(),
+    weekStart: toISODateLocal(weekStart),
     activeDays,
     stations: stations.map(s => ({ id: s.id, name: s.name, requiredCount: s.requiredCount ?? 1 })),
     schedule,
@@ -44,7 +45,7 @@ export function hasUnpublishedChanges(
 ): boolean {
   if (!schedule) return false;
   if (!published) return true;
-  return published.weekStart !== weekStart.toISOString()
+  return published.weekStart !== toISODateLocal(weekStart)
     || JSON.stringify(published.schedule) !== JSON.stringify(schedule);
 }
 
@@ -56,7 +57,7 @@ export function viewerName(payload: PublishedPayload, viewerEmployeeId: string):
 export function viewerShifts(payload: PublishedPayload, viewerEmployeeId: string): ViewerShift[] {
   const name = viewerName(payload, viewerEmployeeId);
   if (!name) return [];
-  const days = getWeekDays(new Date(payload.weekStart), payload.activeDays);
+  const days = getWeekDays(parseISODate(payload.weekStart), payload.activeDays);
   const labels = getHebrewDayLabels(payload.activeDays);
   const shifts: ViewerShift[] = [];
   days.forEach((date, i) => {
