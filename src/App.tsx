@@ -9,6 +9,7 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { LoginPage, CompleteRegistrationPage } from "@/pages/LoginPage";
 import { RegistrantsPage } from "@/pages/RegistrantsPage";
+import { SharePage } from "@/pages/SharePage";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 
@@ -28,6 +29,16 @@ function SuperAdminRoute({ children }: { children: React.ReactNode }) {
 }
 
 function AppContent() {
+  return (
+    <Routes>
+      {/* עמוד ציבורי - נטען בלי שער התחברות */}
+      <Route path="/s/:token" element={<SharePage />} />
+      <Route path="*" element={<AuthenticatedApp />} />
+    </Routes>
+  );
+}
+
+function AuthenticatedApp() {
   const { user, loading, profileMissing } = useAuth();
 
   if (loading) {
