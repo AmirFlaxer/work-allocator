@@ -18,15 +18,17 @@ import { MonthlyReport } from "@/components/MonthlyReport";
 import { ContactDeveloper } from "@/components/ContactDeveloper";
 import { AboutDialog } from "@/components/AboutDialog";
 import { HelpDialog, GuidesBanner } from "@/components/HelpGuides";
+import { ShareLinksDialog } from "@/components/ShareLinksDialog";
 import { generateWeeklySchedule } from "@/lib/scheduler";
 import { getWeekDays, getHebrewDayLabels, DEFAULT_ACTIVE_DAYS, ALL_HEBREW_DAYS, cellNames, stationSlots, cellKey, dailyShiftCap, parseISODate } from "@/lib/week";
+import { buildPublishedPayload, hasUnpublishedChanges, PublishedPayload } from "@/lib/share";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Plus, Calendar, Users, MapPin, Save, FolderOpen, Trash2,
   ChevronLeft, ChevronRight, Image, FileSpreadsheet, Eye, EyeOff,
   BarChart2, Search, Undo2, Redo2, Copy, Moon, Sun,
   BookTemplate, Upload, AlertTriangle, CheckCircle2,
-  Cloud, CloudOff, Loader2, LogOut, Building2,
+  Cloud, CloudOff, Loader2, LogOut, Building2, Megaphone, Share2,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import * as XLSX from "xlsx";
@@ -215,6 +217,42 @@ const Index = () => {
     getOrgPlan(profile.org_id).then(setPlan);
   }, [profile?.org_id]);
 
+  // ── Team share (פרסום לצוות) ────────────────────────────
+  const [publishedPayload, setPublishedPayload] = useState<PublishedPayload | null>(null);
+  const [publishedAt, setPublishedAt] = useState<string | null>(null);
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured || !profile?.org_id) return;
+    supabase!.from("published_schedules")
+      .select("payload, published_at")
+      .eq("org_id", profile.org_id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data) {
+          setPublishedPayload(data.payload as PublishedPayload);
+          setPublishedAt(data.published_at as string);
+        }
+      });
+  }, [profile?.org_id]);
+
+  const unpublishedChanges = hasUnpublishedChanges(publishedPayload, schedule, weekStart);
+
+  const handlePublish = async () => {
+    if (!schedule || !isSupabaseConfigured || !profile?.org_id) return;
+    const payload = buildPublishedPayload(employees, stations, schedule, weekStart, activeDays);
+    const now = new Date().toISOString();
+    const { error } = await supabase!.from("published_schedules")
+      .upsert({ org_id: profile.org_id, payload, published_at: now });
+    if (error) {
+      toast({ title: "שגיאה בפרסום", description: "בדקו את החיבור ונסו שוב", variant: "destructive" });
+      return;
+    }
+    setPublishedPayload(payload);
+    setPublishedAt(now);
+    toast({ title: "השיבוץ פורסם לצוות" });
+  };
+
   // ── Supabase sync ──────────────────────────────────────
   const [syncStatus, setSyncStatus] = useState<"idle" | "syncing" | "synced" | "error">(
     isSupabaseConfigured ? "syncing" : "idle"
@@ -369,6 +407,12 @@ const Index = () => {
     // Clear the employee's cells in the current schedule; archive and templates
     // are historical records and keep the name.
     if (emp) setSchedule(prev => prev ? renameInSchedule(prev, emp.name, "") : prev);
+    // ביטול קישור הצפייה של העובד (אם יש) - fire and forget
+    if (isSupabaseConfigured && profile?.org_id) {
+      supabase!.from("share_tokens").delete()
+        .eq("org_id", profile.org_id).eq("employee_id", id)
+        .then(() => {});
+    }
     toast({ title: "העובד נמחק" });
   };
 
@@ -1081,6 +1125,22 @@ const Index = () => {
                   <Calendar className="h-4 w-4 ml-2" /> צור שיבוץ
                 </Button>
 
+                {/* Publish + share */}
+                {isSupabaseConfigured && schedule && (
+                  <Button variant={unpublishedChanges ? "default" : "outline"} onClick={handlePublish}
+                    title={publishedAt ? `פורסם לאחרונה: ${new Date(publishedAt).toLocaleString("he-IL", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}` : "טרם פורסם"}>
+                    <Megaphone className="h-4 w-4 ml-2" />
+                    <span className="hidden sm:inline">פרסם לצוות</span>
+                    {unpublishedChanges && publishedAt && <span className="mr-1.5 w-2 h-2 rounded-full bg-warning inline-block" />}
+                  </Button>
+                )}
+                {isSupabaseConfigured && (
+                  <Button variant="outline" onClick={() => setShareDialogOpen(true)} title="קישורי צפייה לעובדים">
+                    <Share2 className="h-4 w-4 ml-2" />
+                    <span className="hidden sm:inline">שיתוף</span>
+                  </Button>
+                )}
+
                 {/* Save */}
                 {schedule && (
                   <Dialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>
@@ -1298,6 +1358,16 @@ const Index = () => {
 
       {/* Upgrade (freemium) dialog */}
       <UpgradeDialog reason={upgradeReason} onClose={() => setUpgradeReason(null)} />
+
+      {/* Share links dialog */}
+      {isSupabaseConfigured && profile?.org_id && (
+        <ShareLinksDialog
+          open={shareDialogOpen}
+          onOpenChange={setShareDialogOpen}
+          employees={employees}
+          orgId={profile.org_id}
+        />
+      )}
 
       {/* Station delete confirmation */}
       <AlertDialog open={stationToDelete !== null} onOpenChange={open => { if (!open) setStationToDelete(null); }}>
