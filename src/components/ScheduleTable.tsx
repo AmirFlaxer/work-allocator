@@ -12,6 +12,7 @@ import {
 import { Lock, LockOpen, Pencil, X, Eye, History } from "lucide-react";
 import { calculateWorkloads } from "@/lib/scheduler";
 import { getWeekDays, getHebrewDayLabels, cellNames, stationSlots, cellKey, parseISODate } from "@/lib/week";
+import { useWeekHolidays } from "@/hooks/use-week-holidays";
 import { getEmployeeColor } from "@/lib/employeeColors";
 
 interface ScheduleTableProps {
@@ -45,6 +46,7 @@ export function ScheduleTable({
 }: ScheduleTableProps) {
   const weekDays = getWeekDays(weekStart, activeDays);
   const hebrewDays = getHebrewDayLabels(activeDays);
+  const holidays = useWeekHolidays(weekDays);
   const workloads = calculateWorkloads(schedule);
 
   // Edit dialog
@@ -119,23 +121,33 @@ export function ScheduleTable({
             <TableHeader>
               <TableRow className="bg-card border-b-2 border-border">
                 <TableHead className="font-bold text-right min-w-[120px] text-foreground border-l border-border">עמדה</TableHead>
-                {weekDays.map((date, idx) => (
-                  <TableHead
-                    key={date}
-                    className="text-center font-semibold min-w-[150px] py-3"
-                    style={{ borderBottomColor: 'hsl(var(--border-strong))' }}
-                  >
-                    <div className="text-sm font-bold text-foreground">{hebrewDays[idx]}</div>
-                    <div className="text-xs font-normal text-muted-foreground mt-0.5">
-                      {parseISODate(date).toLocaleDateString("he-IL", { day: "2-digit", month: "2-digit" })}
-                    </div>
-                    {emptyPerDay[idx] > 0 ? (
-                      <div className="text-xs text-orange-500 font-medium mt-0.5">⚠ {emptyPerDay[idx]} ריקות</div>
-                    ) : (
-                      <div className="text-xs text-emerald-500 font-medium mt-0.5">✓ מלא</div>
-                    )}
-                  </TableHead>
-                ))}
+                {weekDays.map((date, idx) => {
+                  const holiday = holidays[date];
+                  const holidayBg = holiday?.category === "strong" ? "bg-warning/20"
+                    : holiday?.category === "light" ? "bg-warning/8" : "";
+                  return (
+                    <TableHead
+                      key={date}
+                      className={`text-center font-semibold min-w-[150px] py-3 ${holidayBg}`}
+                      style={{ borderBottomColor: 'hsl(var(--border-strong))' }}
+                    >
+                      <div className="text-sm font-bold text-foreground">{hebrewDays[idx]}</div>
+                      <div className="text-xs font-normal text-muted-foreground mt-0.5">
+                        {parseISODate(date).toLocaleDateString("he-IL", { day: "2-digit", month: "2-digit" })}
+                      </div>
+                      {holiday && (
+                        <div className={`text-xs mt-0.5 ${holiday.category === "strong" ? "text-warning-foreground font-semibold" : "text-muted-foreground"}`}>
+                          {holiday.name}
+                        </div>
+                      )}
+                      {emptyPerDay[idx] > 0 ? (
+                        <div className="text-xs text-orange-500 font-medium mt-0.5">⚠ {emptyPerDay[idx]} ריקות</div>
+                      ) : (
+                        <div className="text-xs text-emerald-500 font-medium mt-0.5">✓ מלא</div>
+                      )}
+                    </TableHead>
+                  );
+                })}
               </TableRow>
             </TableHeader>
             <TableBody>
