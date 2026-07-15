@@ -13,7 +13,7 @@ describe("categorizeHolidayEvent", () => {
   });
 
   it("יום העצמאות הוא מקרה-פרטי - MODERN_HOLIDAY אבל 'strong'", () => {
-    expect(categorizeHolidayEvent(mockEvent(0x2000, "Yom HaAtzmaut"))).toBe("strong");
+    expect(categorizeHolidayEvent(mockEvent(0x2000, "Yom HaAtzma'ut"))).toBe("strong");
   });
 
   it("MODERN_HOLIDAY אחר (למשל יום הזיכרון) הוא 'light'", () => {
@@ -57,6 +57,23 @@ describe("getHolidayForDate", () => {
     const { HDate, months } = await import("@hebcal/core");
     const iso = toISODateLocal(new HDate(10, months.TISHREI, 5787).greg());
     const result = await getHolidayForDate(iso);
+    expect(result?.category).toBe("strong");
+  });
+
+  it("יום-העצמאות (תאריך אמיתי, נע כל שנה - לא HDate קבוע) מוחזר כ-strong", async () => {
+    // התאריך של יום-העצמאות זז כל שנה (5 באייר, שנדחה כשחל בסמוך לשבת) - לכן, בניגוד
+    // לראש-השנה/יום-כיפור שחלים בתאריך עברי קבוע, מאתרים אותו בפועל מול הספרייה
+    // (getHolidaysForYear) במקום לבנות HDate עם יום קבוע. זו הבדיקה שהייתה תופסת
+    // את באג-הגרש החסר במחרוזת ("Yom HaAtzmaut" מול "Yom HaAtzma'ut") לפני מיזוג.
+    const { HebrewCalendar } = await import("@hebcal/core");
+    const yearEvents = HebrewCalendar.getHolidaysForYear(5787);
+    let atzmautDate: Date | undefined;
+    for (const events of yearEvents.values()) {
+      const ev = events.find(e => e.basename() === "Yom HaAtzma'ut");
+      if (ev) { atzmautDate = ev.getDate().greg(); break; }
+    }
+    if (!atzmautDate) throw new Error("Yom HaAtzma'ut לא נמצא בשנה 5787 - לבדוק גרסת @hebcal/core");
+    const result = await getHolidayForDate(toISODateLocal(atzmautDate));
     expect(result?.category).toBe("strong");
   });
 

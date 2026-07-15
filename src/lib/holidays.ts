@@ -21,7 +21,7 @@ const LIGHT_MASK = 0x80000 /* MINOR_HOLIDAY */ | 0x100000 /* EREV */ | 0x200000 
 // שהם ימי-עבודה רגילים) - זה מקרה-פרטי-ידני, כי בפועל הוא יום-חופש לאומי.
 export function categorizeHolidayEvent(ev: CategorizableEvent): HolidayCategory | null {
   const f = ev.getFlags();
-  if ((f & CHAG) !== 0 || ev.basename() === "Yom HaAtzmaut") return "strong";
+  if ((f & CHAG) !== 0 || ev.basename() === "Yom HaAtzma'ut") return "strong";
   if ((f & LIGHT_MASK) !== 0) return "light";
   return null;
 }
