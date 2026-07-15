@@ -407,11 +407,16 @@ const Index = () => {
     // Clear the employee's cells in the current schedule; archive and templates
     // are historical records and keep the name.
     if (emp) setSchedule(prev => prev ? renameInSchedule(prev, emp.name, "") : prev);
-    // ביטול קישור הצפייה של העובד (אם יש) - fire and forget
+    // ביטול קישור הצפייה של העובד (אם יש) - לא חוסם, כשל מדווח
     if (isSupabaseConfigured && profile?.org_id) {
       supabase!.from("share_tokens").delete()
         .eq("org_id", profile.org_id).eq("employee_id", id)
-        .then(() => {});
+        .then(({ error }) => {
+          if (error) {
+            console.error("מחיקת קישור הצפייה נכשלה:", error);
+            toast({ title: "מחיקת קישור הצפייה של העובד נכשלה", variant: "destructive" });
+          }
+        });
     }
     toast({ title: "העובד נמחק" });
   };
