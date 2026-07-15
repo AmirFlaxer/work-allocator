@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { SavedSchedule, Station } from "@/types/employee";
-import { cellNames, parseISODate, getWeekDays, latestSchedulePerWeek } from "@/lib/week";
+import { cellNames, parseISODate, latestSchedulePerWeek } from "@/lib/week";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -96,7 +96,7 @@ function buildHistoricalData(savedSchedules: SavedSchedule[], stations: Station[
   // ("2026-09" < "2026-10"; unpadded "2026-10" sorts before "2026-9").
   const monthSet = new Set<string>();
   savedSchedules.forEach(s => {
-    const d = new Date(s.weekStart);
+    const d = parseISODate(s.weekStart);
     monthSet.add(`${d.getFullYear()}-${String(d.getMonth()).padStart(2, "0")}`);
   });
 
@@ -124,7 +124,7 @@ export function MonthlyReport({ savedSchedules, stations }: MonthlyReportProps) 
 
   const years = useMemo(() => {
     const ys = new Set<number>();
-    uniqueSchedules.forEach(s => ys.add(new Date(s.weekStart).getFullYear()));
+    uniqueSchedules.forEach(s => ys.add(parseISODate(s.weekStart).getFullYear()));
     ys.add(now.getFullYear());
     return Array.from(ys).sort((a, b) => b - a);
   }, [uniqueSchedules]);
