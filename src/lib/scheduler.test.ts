@@ -123,6 +123,46 @@ describe("generateWeeklySchedule", () => {
     };
     expect(calculateWorkloads(schedule)).toEqual({ "אבי": 2, "בני": 1 });
   });
+
+  it("שלב 4: מעדיף עובד עם עומס-עבר נמוך יותר, לא לפי סדר הרשימה", () => {
+    const days = getWeekDays(WEEK_START, [0, 1]);
+    const employees = [
+      emp({ id: "a", name: "אבי" }), // ראשון ברשימה - בלי הוגנות היה זוכה קודם
+      emp({ id: "b", name: "בני" }),
+    ];
+    const priorWeek = weekOf(2026, 6, 5);
+    const saved = [savedWeek(priorWeek, "2026-07-06T08:00:00.000Z", { "אבי": 1 })];
+    const schedule = generateWeeklySchedule(employees, [st(1)], WEEK_START, [0, 1], undefined, undefined, saved);
+    expect(namesAt(schedule, days[0], 1)).toEqual(["בני"]);
+  });
+
+  it("שלב 2: בין מכוכבים עם אותו minWeeklyShifts, עומס-עבר שובר תיקו", () => {
+    const days = getWeekDays(WEEK_START, [0, 1]);
+    const employees = [
+      emp({ id: "a", name: "אבי", hasStar: true, minWeeklyShifts: 1, maxWeeklyShifts: 1 }),
+      emp({ id: "b", name: "בני", hasStar: true, minWeeklyShifts: 1, maxWeeklyShifts: 1 }),
+    ];
+    const priorWeek = weekOf(2026, 6, 5);
+    const saved = [savedWeek(priorWeek, "2026-07-06T08:00:00.000Z", { "אבי": 1 })];
+    const schedule = generateWeeklySchedule(employees, [st(1)], WEEK_START, [0, 1], undefined, undefined, saved);
+    expect(namesAt(schedule, days[0], 1)).toEqual(["בני"]);
+  });
+
+  it("שלבים 5-6 (leastLoaded): עומס-עבר משפיע גם על משמרת שנייה באותו יום", () => {
+    const [day] = getWeekDays(WEEK_START, [0]);
+    const employees = [
+      emp({ id: "a", name: "אבי", maxDailyShifts: 2 }),
+      emp({ id: "b", name: "בני", maxDailyShifts: 2 }),
+    ];
+    const priorWeek = weekOf(2026, 6, 5);
+    const saved = [savedWeek(priorWeek, "2026-07-06T08:00:00.000Z", { "אבי": 1 })];
+    // עמדה 1 (2 משבצות) מתמלאת בשלב 4 - אבי ובני, אחד כל אחד. המשבצת היחידה
+    // של עמדה 2 נותרת לשלב 6 (משמרת שנייה באותו יום למי שכבר עבד) - שם בני
+    // (עומס כולל 0+1=1) עדיף על אבי (עומס כולל 1+1=2) ומקבל אותה.
+    const schedule = generateWeeklySchedule(employees, [st(1, 2), st(2, 1)], WEEK_START, [0], undefined, undefined, saved);
+    expect(namesAt(schedule, day, 1).sort()).toEqual(["אבי", "בני"]);
+    expect(namesAt(schedule, day, 2)).toEqual(["בני"]);
+  });
 });
 
 describe("calculateRecentLoad", () => {

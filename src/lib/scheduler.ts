@@ -7,10 +7,12 @@ export function generateWeeklySchedule(
   weekStart: Date,
   activeDays: number[],
   baseSchedule?: WeeklySchedule,
-  lockedCells?: Set<string>
+  lockedCells?: Set<string>,
+  savedSchedules?: SavedSchedule[]
 ): WeeklySchedule {
   const schedule: WeeklySchedule = {};
   const weekDays = getWeekDays(weekStart, activeDays);
+  const recentLoad = savedSchedules ? calculateRecentLoad(savedSchedules, weekStart) : new Map<string, number>();
 
   // Initialize slot arrays - preserve locked slots from baseSchedule.
   weekDays.forEach(date => {
@@ -62,11 +64,18 @@ export function generateWeeklySchedule(
     return -1;
   };
 
-  // Of the eligible employees, the one with the fewest assigned days so far -
-  // picking the first match would pile extra shifts on whoever is listed first.
+  // Combined score: shifts assigned this week so far, plus shifts worked in
+  // the recent-weeks history - so leastLoaded favors whoever has had the
+  // least total exposure recently, not just within the current week.
+  const totalRecentLoad = (emp: Employee) =>
+    getAssignedCount(emp.id) + (recentLoad.get(emp.name) ?? 0);
+
+  // Of the eligible employees, the one with the fewest total assigned shifts
+  // (this week + recent history) - picking the first match would pile extra
+  // shifts on whoever is listed first.
   const leastLoaded = (candidates: Employee[]): Employee | undefined =>
     candidates.reduce<Employee | undefined>((best, emp) =>
-      !best || getAssignedCount(emp.id) < getAssignedCount(best.id) ? emp : best, undefined);
+      !best || totalRecentLoad(emp) < totalRecentLoad(best) ? emp : best, undefined);
 
   const place = (date: string, stationId: number, emp: Employee) => {
     const slot = freeSlot(date, stationId);
@@ -91,10 +100,13 @@ export function generateWeeklySchedule(
     });
   });
 
-  // Pass 2: Fill with starred employees (by minWeeklyShifts desc), one shift/day.
+  // Pass 2: Fill with starred employees (by minWeeklyShifts desc, then recent
+  // history ascending as a tie-break), one shift/day.
   employees
     .filter(emp => emp.hasStar)
-    .sort((a, b) => b.minWeeklyShifts - a.minWeeklyShifts)
+    .sort((a, b) =>
+      b.minWeeklyShifts - a.minWeeklyShifts ||
+      (recentLoad.get(a.name) ?? 0) - (recentLoad.get(b.name) ?? 0))
     .forEach(employee => {
       let assignedCount = getAssignedCount(employee.id);
       for (const date of weekDays) {
@@ -124,8 +136,12 @@ export function generateWeeklySchedule(
     });
   });
 
-  // Pass 4: Fill with non-starred employees (one per day).
-  employees.filter(emp => !emp.hasStar).forEach(employee => {
+  // Pass 4: Fill with non-starred employees (one per day), least-recently-
+  // loaded first so shifts don't pile on whoever the array happens to list first.
+  employees
+    .filter(emp => !emp.hasStar)
+    .sort((a, b) => (recentLoad.get(a.name) ?? 0) - (recentLoad.get(b.name) ?? 0))
+    .forEach(employee => {
     for (const date of weekDays) {
       if (employeeAssignments[employee.id][date]) continue;
       if (employee.unavailableDays?.includes(date)) continue;
