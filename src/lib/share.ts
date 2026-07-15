@@ -37,23 +37,34 @@ export function buildPublishedPayload(
   };
 }
 
-/** האם שיבוץ העבודה הנוכחי שונה מה-snapshot שפורסם. */
+/**
+ * האם שיבוץ העבודה הנוכחי שונה מה-snapshot שפורסם.
+ * משווה את ה-payload המלא (כולל עמדות, עובדים וימים פעילים) ולא רק את השיבוץ,
+ * כדי שגם שינוי מבני (למשל שינוי שם עמדה) יסמן שיש שינויים שלא פורסמו.
+ */
 export function hasUnpublishedChanges(
   published: PublishedPayload | null,
+  employees: Employee[],
+  stations: Station[],
   schedule: WeeklySchedule | null,
   weekStart: Date,
+  activeDays: number[],
 ): boolean {
   if (!schedule) return false;
   if (!published) return true;
-  return published.weekStart !== toISODateLocal(weekStart)
-    || JSON.stringify(published.schedule) !== JSON.stringify(schedule);
+  const current = buildPublishedPayload(employees, stations, schedule, weekStart, activeDays);
+  return JSON.stringify(published) !== JSON.stringify(current);
 }
 
 export function viewerName(payload: PublishedPayload, viewerEmployeeId: string): string | null {
   return payload.employees.find(e => e.id === viewerEmployeeId)?.name ?? null;
 }
 
-/** משמרות הצופה מתוך ה-snapshot, לפי סדר הימים ואז סדר העמדות. */
+/**
+ * משמרות הצופה מתוך ה-snapshot, לפי סדר הימים ואז סדר העמדות.
+ * מגבלה ידועה - ההתאמה נעשית לפי שם (תאי השיבוץ שומרים שמות, לא id), כך ששני עובדים
+ * עם שם זהה יודגשו שניהם.
+ */
 export function viewerShifts(payload: PublishedPayload, viewerEmployeeId: string): ViewerShift[] {
   const name = viewerName(payload, viewerEmployeeId);
   if (!name) return [];

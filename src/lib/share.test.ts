@@ -36,27 +36,51 @@ describe("buildPublishedPayload", () => {
 
 describe("hasUnpublishedChanges", () => {
   const published = buildPublishedPayload(employees, stations, schedule, WEEK_START, [0, 1]);
+  const check = (
+    p: typeof published | null,
+    emps = employees, stns = stations, sched = schedule, ws = WEEK_START, ad = [0, 1],
+  ) => hasUnpublishedChanges(p, emps, stns, sched, ws, ad);
 
   it("אין שיבוץ - אין מה לפרסם", () => {
-    expect(hasUnpublishedChanges(published, null, WEEK_START)).toBe(false);
+    expect(hasUnpublishedChanges(published, employees, stations, null, WEEK_START, [0, 1])).toBe(false);
   });
 
   it("אין פרסום קודם אבל יש שיבוץ - יש שינויים", () => {
-    expect(hasUnpublishedChanges(null, schedule, WEEK_START)).toBe(true);
+    expect(check(null)).toBe(true);
   });
 
   it("שיבוץ זהה לפרסום - אין שינויים", () => {
-    expect(hasUnpublishedChanges(published, schedule, WEEK_START)).toBe(false);
+    expect(check(published)).toBe(false);
   });
 
   it("תא השתנה - יש שינויים", () => {
     const changed = { ...schedule, [days[0]]: { ...schedule[days[0]], 2: ["אבי"] } };
-    expect(hasUnpublishedChanges(published, changed, WEEK_START)).toBe(true);
+    expect(check(published, employees, stations, changed)).toBe(true);
   });
 
   it("ניווט לשבוע אחר - יש שינויים", () => {
     const nextWeek = new Date(2026, 6, 19);
-    expect(hasUnpublishedChanges(published, schedule, nextWeek)).toBe(true);
+    expect(check(published, employees, stations, schedule, nextWeek)).toBe(true);
+  });
+
+  it("שינוי שם עמדה - יש שינויים (שינוי מבני)", () => {
+    const renamedStations = [{ ...stations[0], name: "קבלה חדשה" }, stations[1]];
+    expect(check(published, employees, renamedStations)).toBe(true);
+  });
+
+  it("שינוי ימים פעילים - יש שינויים", () => {
+    expect(check(published, employees, stations, schedule, WEEK_START, [0, 1, 2])).toBe(true);
+  });
+
+  it("שינוי שם עובד - יש שינויים", () => {
+    const renamedEmployees = [{ ...employees[0], name: "אבי כהן" }, employees[1]];
+    expect(check(published, renamedEmployees)).toBe(true);
+  });
+
+  it("payload מלא זהה (עמדות, עובדים, ימים) - אין שינויים", () => {
+    const sameStations = stations.map(s => ({ ...s }));
+    const sameEmployees = employees.map(e => ({ ...e }));
+    expect(check(published, sameEmployees, sameStations, schedule, WEEK_START, [0, 1])).toBe(false);
   });
 });
 

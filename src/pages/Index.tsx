@@ -236,7 +236,10 @@ const Index = () => {
       });
   }, [profile?.org_id]);
 
-  const unpublishedChanges = hasUnpublishedChanges(publishedPayload, schedule, weekStart);
+  const unpublishedChanges = useMemo(
+    () => hasUnpublishedChanges(publishedPayload, employees, stations, schedule, weekStart, activeDays),
+    [publishedPayload, employees, stations, schedule, weekStart, activeDays],
+  );
 
   const handlePublish = async () => {
     if (!schedule || !isSupabaseConfigured || !profile?.org_id) return;
