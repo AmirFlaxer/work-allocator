@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { Employee, Station, WeeklySchedule, SavedSchedule } from "@/types/employee";
-import { generateWeeklySchedule, countFilledSlots, calculateWorkloads } from "@/lib/scheduler";
+import { generateWeeklySchedule, countFilledSlots, calculateWorkloads, calculateRecentLoad } from "@/lib/scheduler";
 import { getWeekDays, cellKey, cellNames, toISODateLocal, parseISODate, DEFAULT_ACTIVE_DAYS, latestSchedulePerWeek } from "@/lib/week";
 
 // Sunday, 2026-07-12 (local time).
@@ -17,6 +17,21 @@ const st = (id: number, requiredCount = 1): Station => ({ id, name: `עמדה ${
 
 const namesAt = (schedule: WeeklySchedule, date: string, stationId: number) =>
   cellNames(schedule[date]?.[stationId]);
+
+const weekOf = (year: number, month: number, day: number) => new Date(year, month, day);
+
+const savedWeek = (weekStart: Date, savedAt: string, names: Record<string, number>): SavedSchedule => {
+  const [day] = getWeekDays(weekStart, [0]);
+  const schedule: WeeklySchedule = { [day]: {} };
+  let stationId = 1;
+  Object.entries(names).forEach(([name, count]) => {
+    for (let i = 0; i < count; i++) {
+      schedule[day][stationId] = [name];
+      stationId++;
+    }
+  });
+  return { id: savedAt, name: toISODateLocal(weekStart), schedule, weekStart: day, savedAt };
+};
 
 describe("generateWeeklySchedule", () => {
   it("ממלא את כל המשבצות כשיש מספיק עובדים", () => {
@@ -107,6 +122,34 @@ describe("generateWeeklySchedule", () => {
       [days[1]]: { 1: ["אבי", ""] },
     };
     expect(calculateWorkloads(schedule)).toEqual({ "אבי": 2, "בני": 1 });
+  });
+});
+
+describe("calculateRecentLoad", () => {
+  it("סופר משמרות רק ב-4 השבועות שלפני השבוע הנוכחי, לא כולל אותו", () => {
+    const saved: SavedSchedule[] = [
+      savedWeek(weekOf(2026, 5, 7), "2026-06-08T08:00:00.000Z", { "אבי": 1 }),   // 5 שבועות אחורה - מחוץ לחלון
+      savedWeek(weekOf(2026, 5, 14), "2026-06-15T08:00:00.000Z", { "אבי": 1 }),  // 4 שבועות אחורה
+      savedWeek(weekOf(2026, 5, 21), "2026-06-22T08:00:00.000Z", { "אבי": 1 }),  // 3 שבועות אחורה
+      savedWeek(weekOf(2026, 5, 28), "2026-06-29T08:00:00.000Z", { "בני": 1 }),  // 2 שבועות אחורה
+      savedWeek(weekOf(2026, 6, 5), "2026-07-06T08:00:00.000Z", { "אבי": 1 }),   // שבוע אחורה
+      savedWeek(WEEK_START, "2026-07-13T08:00:00.000Z", { "אבי": 5 }),           // השבוע הנוכחי - לא נספר
+    ];
+    const load = calculateRecentLoad(saved, WEEK_START);
+    expect(load.get("אבי")).toBe(3); // 4/3/1 שבועות אחורה; 5-שבועות-אחורה מחוץ לחלון
+    expect(load.get("בני")).toBe(1);
+  });
+
+  it("מאחד שמירה כפולה של אותו שבוע - נספרת רק האחרונה", () => {
+    const priorWeek = weekOf(2026, 6, 5);
+    const [day] = getWeekDays(priorWeek, [0]);
+    const saved: SavedSchedule[] = [
+      { id: "1", name: "טיוטה", schedule: { [day]: { 1: ["אבי"] } }, weekStart: day, savedAt: "2026-07-06T08:00:00.000Z" },
+      { id: "2", name: "סופי", schedule: { [day]: { 1: ["בני"] } }, weekStart: day, savedAt: "2026-07-07T08:00:00.000Z" },
+    ];
+    const load = calculateRecentLoad(saved, WEEK_START);
+    expect(load.get("אבי")).toBeUndefined();
+    expect(load.get("בני")).toBe(1);
   });
 });
 

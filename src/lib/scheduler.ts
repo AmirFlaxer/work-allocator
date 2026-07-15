@@ -1,5 +1,5 @@
-import { Employee, Station, WeeklySchedule } from "@/types/employee";
-import { getWeekDays, cellNames, stationSlots, cellKey, dailyShiftCap } from "@/lib/week";
+import { Employee, Station, WeeklySchedule, SavedSchedule } from "@/types/employee";
+import { getWeekDays, cellNames, stationSlots, cellKey, dailyShiftCap, latestSchedulePerWeek, parseISODate } from "@/lib/week";
 
 export function generateWeeklySchedule(
   employees: Employee[],
@@ -197,4 +197,33 @@ export function calculateWorkloads(schedule: WeeklySchedule): { [name: string]: 
     });
   });
   return workload;
+}
+
+// Total shifts each employee (by name) worked across the most recent
+// weekCount saved weeks strictly before currentWeekStart - lets the
+// generator favor whoever has had fewer shifts recently (inter-week fairness).
+export function calculateRecentLoad(
+  savedSchedules: SavedSchedule[],
+  currentWeekStart: Date,
+  weekCount = 4
+): Map<string, number> {
+  const currentWeekKey = getWeekDays(currentWeekStart, [0])[0];
+  const priorWeeks = latestSchedulePerWeek(savedSchedules)
+    .map(s => ({ saved: s, weekKey: getWeekDays(parseISODate(s.weekStart), [0])[0] }))
+    .filter(({ weekKey }) => weekKey < currentWeekKey)
+    .sort((a, b) => b.weekKey.localeCompare(a.weekKey))
+    .slice(0, weekCount)
+    .map(({ saved }) => saved);
+
+  const load = new Map<string, number>();
+  priorWeeks.forEach(saved => {
+    Object.values(saved.schedule).forEach(day => {
+      Object.values(day).forEach(cell => {
+        cellNames(cell).forEach(name => {
+          if (name) load.set(name, (load.get(name) ?? 0) + 1);
+        });
+      });
+    });
+  });
+  return load;
 }
