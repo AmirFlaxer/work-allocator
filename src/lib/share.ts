@@ -53,7 +53,10 @@ export function hasUnpublishedChanges(
   if (!schedule) return false;
   if (!published) return true;
   const current = buildPublishedPayload(employees, stations, schedule, weekStart, activeDays);
-  return JSON.stringify(published) !== JSON.stringify(current);
+  // השוואה שדה-שדה ולא stringify על האובייקט השלם - JSONB של Postgres מחזיר מפתחות
+  // בסדר קנוני, כך שהשוואת המחרוזת המלאה הייתה מסמנת "שינוי" אחרי כל רענון עמוד.
+  return (Object.keys(current) as (keyof PublishedPayload)[])
+    .some(k => JSON.stringify(published[k]) !== JSON.stringify(current[k]));
 }
 
 export function viewerName(payload: PublishedPayload, viewerEmployeeId: string): string | null {

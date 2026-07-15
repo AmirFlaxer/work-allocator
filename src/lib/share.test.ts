@@ -82,6 +82,18 @@ describe("hasUnpublishedChanges", () => {
     const sameEmployees = employees.map(e => ({ ...e }));
     expect(check(published, sameEmployees, sameStations, schedule, WEEK_START, [0, 1])).toBe(false);
   });
+
+  it("payload זהה בסדר מפתחות שונה (round-trip של JSONB) - אין שינויים", () => {
+    // Postgres JSONB מחזיר מפתחות בסדר קנוני, לא בסדר הבנייה - ההשוואה חייבת להיות חסינה לכך.
+    const reordered = {
+      employees: published.employees,
+      schedule: published.schedule,
+      stations: published.stations,
+      activeDays: published.activeDays,
+      weekStart: published.weekStart,
+    };
+    expect(check(reordered)).toBe(false);
+  });
 });
 
 describe("viewer helpers", () => {
