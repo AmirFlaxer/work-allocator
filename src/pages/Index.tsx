@@ -520,7 +520,7 @@ const Index = () => {
       });
     }
 
-    const newSchedule = generateWeeklySchedule(employees, stations, weekStart, activeDays, baseSchedule ?? undefined, lockedCells);
+    const newSchedule = generateWeeklySchedule(employees, stations, weekStart, activeDays, baseSchedule ?? undefined, lockedCells, savedSchedules);
     if (schedule) pushHistory(schedule);
     setSchedule(newSchedule);
     toast({ title: "השיבוץ נוצר!" });
