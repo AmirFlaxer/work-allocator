@@ -11,6 +11,11 @@ export function useWeekHolidays(weekDays: string[]): Record<string, HolidayInfo 
     Promise.all(weekDays.map(async date => [date, await getHolidayForDate(date)] as const))
       .then(entries => {
         if (!cancelled) setHolidays(Object.fromEntries(entries));
+      })
+      .catch(err => {
+        // כשל בטעינת @hebcal/core (או בבעיה אחרת) לא אמור לשבור את הטבלה -
+        // רק לדווח, כדי שהעדר-חגים בממשק יהיה ניתן לאבחון ולא שקט-לגמרי.
+        console.error("טעינת חגים נכשלה:", err);
       });
     return () => { cancelled = true; };
   }, [weekDays.join(",")]);
