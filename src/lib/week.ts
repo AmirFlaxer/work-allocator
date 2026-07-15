@@ -1,4 +1,4 @@
-import { Station, Cell, Employee } from "@/types/employee";
+import { Station, Cell, Employee, SavedSchedule } from "@/types/employee";
 
 // Single source of truth for week-day logic (was duplicated across 4 files).
 
@@ -68,4 +68,17 @@ export function dailyShiftCap(employee: Employee): number {
 // Cell identity key including the slot index.
 export function cellKey(date: string, stationId: number, slotIndex: number): string {
   return `${date}__${stationId}__${slotIndex}`;
+}
+
+// Only the latest save of each calendar week counts - saving the same week
+// twice (draft then final) must not double-count shifts in reports or in
+// the scheduler's inter-week fairness calculation.
+export function latestSchedulePerWeek(savedSchedules: SavedSchedule[]): SavedSchedule[] {
+  const byWeek = new Map<string, SavedSchedule>();
+  savedSchedules.forEach(s => {
+    const weekKey = getWeekDays(parseISODate(s.weekStart), [0])[0];
+    const existing = byWeek.get(weekKey);
+    if (!existing || s.savedAt > existing.savedAt) byWeek.set(weekKey, s);
+  });
+  return Array.from(byWeek.values());
 }

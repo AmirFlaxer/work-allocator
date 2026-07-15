@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { SavedSchedule, Station } from "@/types/employee";
-import { cellNames, parseISODate, getWeekDays } from "@/lib/week";
+import { cellNames, parseISODate, getWeekDays, latestSchedulePerWeek } from "@/lib/week";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -25,18 +25,6 @@ const HEBREW_MONTHS = [
 ];
 
 const COLORS = ["#22c55e","#84cc16","#eab308","#f97316","#ef4444","#8b5cf6","#06b6d4","#ec4899"];
-
-// Only the latest save of each week counts - saving the same week twice
-// (e.g. draft then final) must not double-count shifts in payroll reports.
-function latestPerWeek(savedSchedules: SavedSchedule[]): SavedSchedule[] {
-  const byWeek = new Map<string, SavedSchedule>();
-  savedSchedules.forEach(s => {
-    const weekKey = getWeekDays(new Date(s.weekStart), [0])[0];
-    const existing = byWeek.get(weekKey);
-    if (!existing || s.savedAt > existing.savedAt) byWeek.set(weekKey, s);
-  });
-  return Array.from(byWeek.values());
-}
 
 function buildReport(savedSchedules: SavedSchedule[], stations: Station[], month: number, year: number): EmployeeReport[] {
   const stationMap = new Map(stations.map(s => [s.id, s.name]));
@@ -132,7 +120,7 @@ export function MonthlyReport({ savedSchedules, stations }: MonthlyReportProps) 
   const [year, setYear] = useState(now.getFullYear());
   const [showDetails, setShowDetails] = useState(false);
 
-  const uniqueSchedules = useMemo(() => latestPerWeek(savedSchedules), [savedSchedules]);
+  const uniqueSchedules = useMemo(() => latestSchedulePerWeek(savedSchedules), [savedSchedules]);
 
   const years = useMemo(() => {
     const ys = new Set<number>();

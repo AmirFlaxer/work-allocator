@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { Employee, Station, WeeklySchedule } from "@/types/employee";
+import { Employee, Station, WeeklySchedule, SavedSchedule } from "@/types/employee";
 import { generateWeeklySchedule, countFilledSlots, calculateWorkloads } from "@/lib/scheduler";
-import { getWeekDays, cellKey, cellNames, toISODateLocal, parseISODate, DEFAULT_ACTIVE_DAYS } from "@/lib/week";
+import { getWeekDays, cellKey, cellNames, toISODateLocal, parseISODate, DEFAULT_ACTIVE_DAYS, latestSchedulePerWeek } from "@/lib/week";
 
 // Sunday, 2026-07-12 (local time).
 const WEEK_START = new Date(2026, 6, 12);
@@ -119,5 +119,26 @@ describe("week helpers", () => {
   it("getWeekDays מעוגן ליום ראשון גם כשה-weekStart אינו יום ראשון", () => {
     const wednesday = new Date(2026, 6, 15);
     expect(getWeekDays(wednesday, [0, 4])).toEqual(["2026-07-12", "2026-07-16"]);
+  });
+
+  it("latestSchedulePerWeek משאיר רק את השמירה האחרונה של כל שבוע", () => {
+    const [day] = getWeekDays(WEEK_START, [0]);
+    const saved: SavedSchedule[] = [
+      { id: "1", name: "טיוטה", schedule: {}, weekStart: day, savedAt: "2026-07-10T08:00:00.000Z" },
+      { id: "2", name: "סופי", schedule: {}, weekStart: day, savedAt: "2026-07-12T08:00:00.000Z" },
+    ];
+    const result = latestSchedulePerWeek(saved);
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe("2");
+  });
+
+  it("latestSchedulePerWeek משאיר שבועות שונים בנפרד", () => {
+    const [day1] = getWeekDays(WEEK_START, [0]);
+    const [day2] = getWeekDays(new Date(2026, 6, 19), [0]);
+    const saved: SavedSchedule[] = [
+      { id: "1", name: "א", schedule: {}, weekStart: day1, savedAt: "2026-07-10T08:00:00.000Z" },
+      { id: "2", name: "ב", schedule: {}, weekStart: day2, savedAt: "2026-07-17T08:00:00.000Z" },
+    ];
+    expect(latestSchedulePerWeek(saved)).toHaveLength(2);
   });
 });
