@@ -124,7 +124,7 @@ export function ScheduleTable({
                 {weekDays.map((date, idx) => {
                   const holiday = holidays[date];
                   const holidayBg = holiday?.category === "strong" ? "bg-warning/20"
-                    : holiday?.category === "light" ? "bg-warning/8" : "";
+                    : holiday?.category === "light" ? "bg-warning/10" : "";
                   return (
                     <TableHead
                       key={date}
