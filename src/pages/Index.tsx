@@ -20,8 +20,9 @@ import { AboutDialog } from "@/components/AboutDialog";
 import { HelpDialog, GuidesBanner } from "@/components/HelpGuides";
 import { ShareLinksDialog } from "@/components/ShareLinksDialog";
 import { generateWeeklySchedule } from "@/lib/scheduler";
-import { getWeekDays, getHebrewDayLabels, DEFAULT_ACTIVE_DAYS, ALL_HEBREW_DAYS, cellNames, stationSlots, cellKey, dailyShiftCap, parseISODate } from "@/lib/week";
+import { getWeekDays, getHebrewDayLabels, DEFAULT_ACTIVE_DAYS, ALL_HEBREW_DAYS, cellNames, stationSlots, cellKey, dailyShiftCap, parseISODate, toISODateLocal } from "@/lib/week";
 import { buildPublishedPayload, hasUnpublishedChanges, PublishedPayload } from "@/lib/share";
+import { mergeAvailabilitySubmissions } from "@/lib/availability";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Plus, Calendar, Users, MapPin, Save, FolderOpen, Trash2,
@@ -279,6 +280,38 @@ const Index = () => {
     }, 500);
   }, [profile?.org_id]);
 
+  // עדכוני זמינות שהוגשו על ידי עובדים (דרך הקישור האישי) - ממוזגים אוטומטית
+  // ל-unavailableDays בכל טעינת האפליקציה, ואז נמחקים מתיבת-הדואר-הנכנס
+  // (כדי שלא ימוזגו שוב וידרסו עריכה ידנית עתידית של המנהל).
+  const applyAvailabilitySubmissions = useCallback(async (
+    currentEmployees: Employee[], weekStart: Date, activeDays: number[],
+  ) => {
+    if (!isSupabaseConfigured || !profile?.org_id) return;
+    const weekStartIso = toISODateLocal(weekStart);
+    const { data: submissions, error } = await supabase!
+      .from("employee_availability")
+      .select("employee_id, unavailable_dates")
+      .eq("org_id", profile.org_id)
+      .eq("week_start", weekStartIso);
+    if (error || !submissions || submissions.length === 0) return;
+    const merged = mergeAvailabilitySubmissions(
+      currentEmployees,
+      submissions.map(s => ({ employeeId: s.employee_id as string, unavailableDates: s.unavailable_dates as string[] })),
+      weekStart, activeDays,
+    );
+    setEmployees(merged);
+    // כתיבה ישירה ל-app_store (לא דרך syncToSupabase המדגם) - צריך לדעת מיד
+    // אם ההצלחה קרתה כדי להחליט אם למחוק את השורות שמוזגו. ה-effect הרגיל של
+    // employees עדיין ירוץ ויכתוב שוב את אותו ערך - כפילות לא-מזיקה, לא נמנעת
+    // בכוונה כדי לא לסבך את ה-isRemoteUpdate guard הקיים.
+    const { error: saveError } = await supabase!.from("app_store")
+      .upsert({ key: "employees", org_id: profile.org_id, value: merged, updated_at: new Date().toISOString() });
+    if (saveError) { setSyncStatus("error"); return; }
+    toast({ title: `הוחלו עדכוני זמינות מ-${submissions.length} עובדים` });
+    await supabase!.from("employee_availability").delete()
+      .eq("org_id", profile.org_id).eq("week_start", weekStartIso);
+  }, [profile?.org_id, toast]);
+
   useEffect(() => { localStorage.setItem("employees", JSON.stringify(employees)); syncToSupabase("employees", employees); }, [employees, syncToSupabase]);
   useEffect(() => { localStorage.setItem("stations", JSON.stringify(stations)); syncToSupabase("stations", stations); }, [stations, syncToSupabase]);
   useEffect(() => { if (schedule) { localStorage.setItem("schedule", JSON.stringify(schedule)); syncToSupabase("schedule", schedule); } }, [schedule, syncToSupabase]);
@@ -297,6 +330,8 @@ const Index = () => {
       if (error || !data) { setSyncStatus("error"); return; }
       isRemoteUpdate.current = true;
       const store = Object.fromEntries(data.map(r => [r.key, r.value]));
+      let resolvedWeekStart = getNextSunday(new Date());
+      let resolvedActiveDays = DEFAULT_ACTIVE_DAYS;
       if (data.length === 0) {
         ORG_DATA_KEYS.forEach(k => localStorage.removeItem(k));
         setEmployees([]); setStations([]); setSchedule(null);
@@ -312,19 +347,26 @@ const Index = () => {
           const ws = new Date(store.weekStart as string);
           const weekEnd = new Date(ws);
           weekEnd.setDate(weekEnd.getDate() + 6);
-          setWeekStart(weekEnd < new Date() ? getNextSunday(new Date()) : ws);
+          resolvedWeekStart = weekEnd < new Date() ? getNextSunday(new Date()) : ws;
+          setWeekStart(resolvedWeekStart);
         }
         if (store.savedSchedules) setSavedSchedules(store.savedSchedules as SavedSchedule[]);
         if (store.scheduleTemplates) setTemplates(store.scheduleTemplates as ScheduleTemplate[]);
         if (store.lockedCells)    setLockedCells(new Set(store.lockedCells as string[]));
         if (store.auditLog)       setAuditLog(store.auditLog as { [k: string]: AuditEntry[] });
         if (store.cellColors !== undefined) setCellColors(store.cellColors as boolean);
-        if (store.activeDays) setActiveDays(store.activeDays as number[]);
+        if (store.activeDays) { resolvedActiveDays = store.activeDays as number[]; setActiveDays(resolvedActiveDays); }
       }
       hasLoaded.current = true;
-      setTimeout(() => { isRemoteUpdate.current = false; setSyncStatus("synced"); }, 200);
+      setTimeout(() => {
+        isRemoteUpdate.current = false;
+        setSyncStatus("synced");
+        if (data.length > 0 && store.employees) {
+          applyAvailabilitySubmissions(store.employees as Employee[], resolvedWeekStart, resolvedActiveDays);
+        }
+      }, 200);
     });
-  }, [profile?.org_id]);
+  }, [profile?.org_id, applyAvailabilitySubmissions]);
 
   // ── Real-time subscription ─────────────────────────────
   useEffect(() => {
@@ -419,6 +461,11 @@ const Index = () => {
             console.error("מחיקת קישור הצפייה נכשלה:", error);
             toast({ title: "מחיקת קישור הצפייה של העובד נכשלה", variant: "destructive" });
           }
+        });
+      supabase!.from("employee_availability").delete()
+        .eq("org_id", profile.org_id).eq("employee_id", id)
+        .then(({ error }) => {
+          if (error) console.error("מחיקת הגשת הזמינות של העובד נכשלה:", error);
         });
     }
     toast({ title: "העובד נמחק" });
