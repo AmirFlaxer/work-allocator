@@ -31,7 +31,7 @@ CREATE OR REPLACE FUNCTION get_share_availability_context(share_token TEXT)
 RETURNS JSONB LANGUAGE SQL SECURITY DEFINER STABLE AS $$
   SELECT jsonb_build_object(
     'weekStart', (SELECT value FROM app_store WHERE org_id = t.org_id AND key = 'weekStart'),
-    'activeDays', (SELECT value FROM app_store WHERE org_id = t.org_id AND key = 'activeDays'),
+    'activeDays', COALESCE((SELECT value FROM app_store WHERE org_id = t.org_id AND key = 'activeDays'), '[0,1,2,3,4]'::jsonb),
     'currentUnavailableDays', (
       SELECT COALESCE(
         (SELECT emp -> 'unavailableDays'
