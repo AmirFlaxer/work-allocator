@@ -49,7 +49,7 @@ export function AvailabilityForm({ token }: AvailabilityFormProps) {
   const toggle = (date: string) => {
     if (submitting) return;
     const next = new Set(selected);
-    next.has(date) ? next.delete(date) : next.add(date);
+    if (next.has(date)) next.delete(date); else next.add(date);
     setState({ status: "ready", context, selected: next });
   };
 
@@ -61,6 +61,10 @@ export function AvailabilityForm({ token }: AvailabilityFormProps) {
       unavailable_dates: Array.from(selected),
     }).then(({ error }) => {
       setState({ status: error ? "error" : "submitted", context, selected });
+    }).catch(err => {
+      // כשל רשת (לא רק error בתשובה) לא אמור לתקוע את הטופס ב-submitting לצמיתות.
+      console.error("שליחת זמינות נכשלה:", err);
+      setState({ status: "error", context, selected });
     });
   };
 
