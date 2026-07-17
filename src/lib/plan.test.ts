@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   ENFORCE_QUOTA, FREE_EMPLOYEE_LIMIT, FREE_STATION_LIMIT,
   isOverEmployeeQuota, isOverStationQuota,
-  canUseMultiSlotStations, canUseMonthlyReports,
+  canUseMultiSlotStations, canUseMonthlyReports, canUseAvailabilityInput,
 } from "@/lib/plan";
 
 describe("plan gates", () => {
@@ -20,5 +20,9 @@ describe("plan gates", () => {
   it("תוכנית pro לעולם אינה מוגבלת, בלי תלות במתג", () => {
     expect(isOverEmployeeQuota("pro", 1000)).toBe(false);
     expect(isOverStationQuota("pro", 1000)).toBe(false);
+  });
+
+  it("הזנת זמינות ע\"י העובד - מותרת כשהמתג כבוי, בלי תלות ב-plan", () => {
+    expect(canUseAvailabilityInput()).toBe(true);
   });
 });

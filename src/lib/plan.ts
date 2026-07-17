@@ -60,3 +60,12 @@ export function canUseMonthlyReports(plan: Plan): boolean {
   if (!ENFORCE_QUOTA) return true;
   return plan === "pro";
 }
+
+/**
+ * הזנת זמינות ע"י העובד עצמו דרך הקישור האישי - פיצ'ר Pro.
+ * ללא פרמטר plan (בשונה מיתר הבדיקות): נקראת מעמוד השיתוף הציבורי (anon, בלי
+ * profile מחובר) - כל עוד ENFORCE_QUOTA כבוי, זו קריאה טהורה בלי תלות ב-DB.
+ */
+export function canUseAvailabilityInput(): boolean {
+  return !ENFORCE_QUOTA;
+}
