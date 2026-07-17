@@ -5,6 +5,7 @@ import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { SharedScheduleResponse, viewerName, viewerShifts } from "@/lib/share";
 import { getWeekDays, getHebrewDayLabels, cellNames, stationSlots, parseISODate } from "@/lib/week";
 import { getEmployeeColor } from "@/lib/employeeColors";
+import { AvailabilityForm } from "@/components/AvailabilityForm";
 
 type LoadState =
   | { status: "loading" }
@@ -85,6 +86,8 @@ export function SharePage() {
             </p>
           )}
         </div>
+
+        <AvailabilityForm token={token!} />
 
         {/* טבלת השיבוץ המלאה - קריאה בלבד */}
         <div className="rounded-2xl border border-border overflow-hidden bg-card">
