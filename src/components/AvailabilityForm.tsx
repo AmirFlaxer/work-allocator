@@ -59,13 +59,18 @@ export function AvailabilityForm({ token }: AvailabilityFormProps) {
       share_token: token,
       week_start: toISODateLocal(weekStartDate),
       unavailable_dates: Array.from(selected),
-    }).then(({ error }) => {
-      setState({ status: error ? "error" : "submitted", context, selected });
-    }).catch(err => {
+    }).then(
+      ({ error }) => {
+        setState({ status: error ? "error" : "submitted", context, selected });
+      },
       // כשל רשת (לא רק error בתשובה) לא אמור לתקוע את הטופס ב-submitting לצמיתות.
-      console.error("שליחת זמינות נכשלה:", err);
-      setState({ status: "error", context, selected });
-    });
+      // then(onFulfilled, onRejected) ולא .catch() בכוונה - ה-builder של supabase-js
+      // מקליד את .then() כמחזיר PromiseLike, לא Promise, כך ש-.catch() לא מוקלד עליו.
+      (err: unknown) => {
+        console.error("שליחת זמינות נכשלה:", err);
+        setState({ status: "error", context, selected });
+      },
+    );
   };
 
   return (
