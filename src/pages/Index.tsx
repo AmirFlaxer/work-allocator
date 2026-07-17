@@ -293,7 +293,11 @@ const Index = () => {
       .select("employee_id, unavailable_dates")
       .eq("org_id", profile.org_id)
       .eq("week_start", weekStartIso);
-    if (error || !submissions || submissions.length === 0) return;
+    if (error) {
+      console.error("קריאת הגשות הזמינות נכשלה:", error);
+      return;
+    }
+    if (!submissions || submissions.length === 0) return;
     const merged = mergeAvailabilitySubmissions(
       currentEmployees,
       submissions.map(s => ({ employeeId: s.employee_id as string, unavailableDates: s.unavailable_dates as string[] })),
@@ -308,8 +312,9 @@ const Index = () => {
       .upsert({ key: "employees", org_id: profile.org_id, value: merged, updated_at: new Date().toISOString() });
     if (saveError) { setSyncStatus("error"); return; }
     toast({ title: `הוחלו עדכוני זמינות מ-${submissions.length} עובדים` });
-    await supabase!.from("employee_availability").delete()
+    const { error: deleteError } = await supabase!.from("employee_availability").delete()
       .eq("org_id", profile.org_id).eq("week_start", weekStartIso);
+    if (deleteError) console.error("מחיקת הגשות הזמינות נכשלה:", deleteError);
   }, [profile?.org_id, toast]);
 
   useEffect(() => { localStorage.setItem("employees", JSON.stringify(employees)); syncToSupabase("employees", employees); }, [employees, syncToSupabase]);
