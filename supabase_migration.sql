@@ -38,7 +38,7 @@ ALTER TABLE app_store     ENABLE ROW LEVEL SECURITY;
 -- 5. Helper function — עוקפת RLS כדי למנוע infinite recursion.
 --    חייבת להיות מוגדרת לפני ה-policies שמשתמשות בה.
 CREATE OR REPLACE FUNCTION get_my_org_id()
-RETURNS TEXT LANGUAGE SQL SECURITY DEFINER STABLE
+RETURNS TEXT LANGUAGE SQL SECURITY DEFINER STABLE SET search_path = public
 AS $$ SELECT org_id FROM profiles WHERE id = auth.uid(); $$;
 
 -- 6. RLS Policies — Organizations

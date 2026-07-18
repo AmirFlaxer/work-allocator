@@ -43,7 +43,7 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON share_tokens        TO service_role;
 -- הדלת הציבורית היחידה: token תקף מחזיר את ה-snapshot + זהות הצופה.
 -- token לא קיים או שאין פרסום - NULL. אין דרך למנות ארגונים.
 CREATE OR REPLACE FUNCTION get_shared_schedule(share_token TEXT)
-RETURNS JSONB LANGUAGE SQL SECURITY DEFINER STABLE AS $$
+RETURNS JSONB LANGUAGE SQL SECURITY DEFINER STABLE SET search_path = public AS $$
   SELECT jsonb_build_object(
     'payload',          p.payload,
     'publishedAt',      p.published_at,

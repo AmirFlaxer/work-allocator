@@ -28,7 +28,7 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON employee_availability TO service_role;
 -- הדלת הציבורית הראשונה: מחזירה לעובד את השבוע הפתוח + הזמינות הנוכחית שלו,
 -- כדי שהטופס בעמוד השיתוף ייטען מוכן. token לא קיים - NULL.
 CREATE OR REPLACE FUNCTION get_share_availability_context(share_token TEXT)
-RETURNS JSONB LANGUAGE SQL SECURITY DEFINER STABLE AS $$
+RETURNS JSONB LANGUAGE SQL SECURITY DEFINER STABLE SET search_path = public AS $$
   SELECT jsonb_build_object(
     'weekStart', (SELECT value FROM app_store WHERE org_id = t.org_id AND key = 'weekStart'),
     'activeDays', COALESCE((SELECT value FROM app_store WHERE org_id = t.org_id AND key = 'activeDays'), '[0,1,2,3,4]'::jsonb),
@@ -49,7 +49,7 @@ GRANT EXECUTE ON FUNCTION get_share_availability_context(TEXT) TO anon, authenti
 -- הדלת הציבורית השנייה: העובד שולח/מעדכן את הזמינות שלו לשבוע הנתון.
 -- upsert - שליחה חוזרת דורסת את הקודמת. token לא קיים - לא עושה דבר.
 CREATE OR REPLACE FUNCTION submit_employee_availability(share_token TEXT, week_start TEXT, unavailable_dates JSONB)
-RETURNS VOID LANGUAGE SQL SECURITY DEFINER AS $$
+RETURNS VOID LANGUAGE SQL SECURITY DEFINER SET search_path = public AS $$
   INSERT INTO employee_availability (org_id, employee_id, week_start, unavailable_dates, updated_at)
   SELECT t.org_id, t.employee_id, week_start, unavailable_dates, NOW()
   FROM share_tokens t WHERE t.token = share_token
