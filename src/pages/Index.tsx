@@ -438,7 +438,7 @@ const Index = () => {
     data = { ...data, name };
     if (data.id) {
       const oldName = employees.find(e => e.id === data.id)?.name;
-      setEmployees(prev => prev.map(e => e.id === data.id ? data as Employee : e));
+      setEmployees(prev => prev.map(e => e.id === data.id ? { ...e, ...data } as Employee : e));
       if (oldName && oldName !== data.name) {
         setSchedule(prev => prev ? renameInSchedule(prev, oldName, data.name) : prev);
         setSavedSchedules(prev => prev.map(s => ({ ...s, schedule: renameInSchedule(s.schedule, oldName, data.name) })));
@@ -548,10 +548,12 @@ const Index = () => {
       const next = prev.map(e => {
         const unavailable = e.unavailableDays?.filter(d => d >= todaySunday);
         const requests = e.specificRequests?.filter(r => r.date >= todaySunday);
+        const preferNot = e.preferNotDays?.filter(d => d >= todaySunday);
         if ((unavailable?.length ?? 0) === (e.unavailableDays?.length ?? 0) &&
-            (requests?.length ?? 0) === (e.specificRequests?.length ?? 0)) return e;
+            (requests?.length ?? 0) === (e.specificRequests?.length ?? 0) &&
+            (preferNot?.length ?? 0) === (e.preferNotDays?.length ?? 0)) return e;
         changed = true;
-        return { ...e, unavailableDays: unavailable, specificRequests: requests };
+        return { ...e, unavailableDays: unavailable, specificRequests: requests, preferNotDays: preferNot };
       });
       return changed ? next : prev;
     });

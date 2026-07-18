@@ -191,7 +191,7 @@ export function ScheduleTable({
                                 {softBroken && (
                                   <span
                                     className="inline-block w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0"
-                                    title="שובץ ביום שהעובד מעדיף שלא - לא הייתה חלופה"
+                                    title="שובץ ביום שהעובד מעדיף שלא"
                                   />
                                 )}
                                 <Badge
