@@ -23,13 +23,30 @@ export function WeeklyPreferences({ employees, stations, weekStart, activeDays, 
   const hebrewDays = getHebrewDayLabels(activeDays);
   const selectedEmp = employees.find(e => e.id === selectedEmployee);
 
-  const handleUnavailableToggle = (date: string) => {
+  type DayState = "available" | "preferNot" | "unavailable";
+
+  const dayState = (date: string): DayState =>
+    selectedEmp?.unavailableDays?.includes(date) ? "unavailable"
+    : selectedEmp?.preferNotDays?.includes(date) ? "preferNot"
+    : "available";
+
+  // מחזור לחיצות: זמין, ואז "מעדיף שלא", ואז "לא זמין", וחוזר.
+  // מעבר מצב שומר שהיום לעולם לא נמצא בשתי הרשימות יחד.
+  const handleDayCycle = (date: string) => {
     if (!selectedEmp) return;
-    const unavailable = selectedEmp.unavailableDays || [];
-    const updated = unavailable.includes(date)
-      ? unavailable.filter(d => d !== date)
-      : [...unavailable, date];
-    onUpdate(selectedEmployee, { unavailableDays: updated });
+    const unavailable = selectedEmp.unavailableDays ?? [];
+    const preferNot   = selectedEmp.preferNotDays ?? [];
+    const state = dayState(date);
+    if (state === "available") {
+      onUpdate(selectedEmployee, { preferNotDays: [...preferNot, date] });
+    } else if (state === "preferNot") {
+      onUpdate(selectedEmployee, {
+        preferNotDays: preferNot.filter(d => d !== date),
+        unavailableDays: [...unavailable, date],
+      });
+    } else {
+      onUpdate(selectedEmployee, { unavailableDays: unavailable.filter(d => d !== date) });
+    }
   };
 
   const handleSpecificRequest = (date: string, stationId: number) => {
@@ -109,6 +126,11 @@ export function WeeklyPreferences({ employees, stations, weekStart, activeDays, 
                 {selectedEmp.unavailableDays!.length} ימים חסומים
               </Badge>
             )}
+            {(selectedEmp.preferNotDays?.length ?? 0) > 0 && (
+              <Badge variant="outline" className="border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-300">
+                {selectedEmp.preferNotDays!.length} ימי העדפה
+              </Badge>
+            )}
             {(selectedEmp.specificRequests?.length ?? 0) > 0 && (
               <Badge variant="outline">
                 {selectedEmp.specificRequests!.length} בקשות שיבוץ
@@ -121,35 +143,42 @@ export function WeeklyPreferences({ employees, stations, weekStart, activeDays, 
             )}
           </div>
 
-          {/* Unavailable days */}
+          {/* Day availability - three states */}
           <div className="space-y-3">
-            <h3 className="font-semibold">ימים לא זמינים</h3>
+            <h3 className="font-semibold">זמינות ימים</h3>
+            <p className="text-xs text-muted-foreground">
+              לחיצה מחליפה מצב: זמין, אחר כך "מעדיף שלא", אחר כך "לא זמין"
+            </p>
             <div className="space-y-2">
               {weekDays.map((date, idx) => {
-                const isUnavailable = selectedEmp.unavailableDays?.includes(date);
+                const state = dayState(date);
                 return (
                   <div
                     key={date}
                     className={`flex items-center space-x-2 space-x-reverse rounded-md px-3 py-2 transition-colors ${
-                      isUnavailable ? "bg-red-50 border border-red-200 dark:bg-red-950/30 dark:border-red-900" : ""
+                      state === "unavailable"
+                        ? "bg-red-50 border border-red-200 dark:bg-red-950/30 dark:border-red-900"
+                        : state === "preferNot"
+                        ? "bg-amber-50 border border-amber-200 dark:bg-amber-950/30 dark:border-amber-900"
+                        : ""
                     }`}
                   >
                     <Checkbox
-                      id={`unavailable-${date}`}
-                      checked={isUnavailable || false}
-                      onCheckedChange={() => handleUnavailableToggle(date)}
+                      id={`day-state-${date}`}
+                      checked={state === "unavailable" ? true : state === "preferNot" ? "indeterminate" : false}
+                      onCheckedChange={() => handleDayCycle(date)}
                     />
-                    <Label
-                      htmlFor={`unavailable-${date}`}
-                      className="cursor-pointer flex-1"
-                    >
+                    <Label htmlFor={`day-state-${date}`} className="cursor-pointer flex-1">
                       {hebrewDays[idx]}{" "}
                       <span className="text-muted-foreground text-xs">
                         ({parseISODate(date).toLocaleDateString("he-IL")})
                       </span>
                     </Label>
-                    {isUnavailable && (
+                    {state === "unavailable" && (
                       <span className="text-xs text-red-500">לא זמין</span>
+                    )}
+                    {state === "preferNot" && (
+                      <span className="text-xs text-amber-600 dark:text-amber-400">מעדיף שלא</span>
                     )}
                   </div>
                 );
