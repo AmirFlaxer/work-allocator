@@ -45,6 +45,7 @@ export function JoinPage() {
   useEffect(() => {
     if (!supabase || !token) { setCtxLoaded(true); return; }
     supabase.rpc("get_invite_context", { invite_token: token }).then(({ data, error }) => {
+      setCtxFailed(false);
       if (error) {
         console.error("get_invite_context failed:", error);
         setCtxFailed(true);
