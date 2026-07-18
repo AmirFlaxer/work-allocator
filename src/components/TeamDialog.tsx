@@ -36,12 +36,18 @@ export function TeamDialog({ open, onOpenChange, orgId }: TeamDialogProps) {
       supabase.from("org_invites").select("token, created_at, expires_at, used_by")
         .eq("org_id", orgId).order("created_at", { ascending: false }),
     ]);
-    if (profilesRes.error) console.error("טעינת מנהלים נכשלה:", profilesRes.error);
-    if (invitesRes.error) console.error("טעינת הזמנות נכשלה:", invitesRes.error);
+    if (profilesRes.error) {
+      console.error("טעינת מנהלים נכשלה:", profilesRes.error);
+      toast({ title: "שגיאה בטעינת המנהלים", variant: "destructive" });
+    }
+    if (invitesRes.error) {
+      console.error("טעינת הזמנות נכשלה:", invitesRes.error);
+      toast({ title: "שגיאה בטעינת ההזמנות", variant: "destructive" });
+    }
     setMembers((profilesRes.data ?? []) as OrgMember[]);
     setInvites(pendingInvites((invitesRes.data ?? []) as OrgInvite[], new Date()));
     setLoading(false);
-  }, [orgId]);
+  }, [orgId, toast]);
 
   useEffect(() => {
     if (open) { setConfirmRemoveId(null); setManualLink(null); load(); }
@@ -52,6 +58,7 @@ export function TeamDialog({ open, onOpenChange, orgId }: TeamDialogProps) {
     try {
       await navigator.clipboard.writeText(link);
       setCopiedToken(token);
+      setManualLink(null);
       setTimeout(() => setCopiedToken(null), 2000);
     } catch {
       setManualLink(link);
