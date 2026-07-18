@@ -163,6 +163,58 @@ describe("generateWeeklySchedule", () => {
     expect(namesAt(schedule, day, 1).sort()).toEqual(["אבי", "בני"]);
     expect(namesAt(schedule, day, 2)).toEqual(["בני"]);
   });
+
+  describe("העדפות רכות (מעדיף שלא)", () => {
+    it("מעדיף-שלא לא משובץ כשיש עובד חלופי", () => {
+      const [day] = getWeekDays(WEEK_START, [0]);
+      const employees = [
+        emp({ id: "a", name: "אבי", preferNotDays: [day] }),
+        emp({ id: "b", name: "בני" }),
+      ];
+      const schedule = generateWeeklySchedule(employees, [st(1)], WEEK_START, [0]);
+      expect(namesAt(schedule, day, 1)).toEqual(["בני"]);
+    });
+
+    it("משמרת-כפולה של עובד אחר עדיפה על שבירת מעדיף-שלא", () => {
+      const [day] = getWeekDays(WEEK_START, [0]);
+      const employees = [
+        emp({ id: "a", name: "אבי", preferNotDays: [day] }),
+        emp({ id: "b", name: "בני", maxDailyShifts: 2 }),
+      ];
+      const schedule = generateWeeklySchedule(employees, [st(1), st(2)], WEEK_START, [0]);
+      // שלב 6 (משמרת שנייה לבני) רץ לפני שלבים 7-8 - אבי לא משובץ בכלל
+      expect(namesAt(schedule, day, 1)).toEqual(["בני"]);
+      expect(namesAt(schedule, day, 2)).toEqual(["בני"]);
+    });
+
+    it("כשאין ברירה - מעדיף-שלא כן משובץ והמשבצת לא נשארת ריקה", () => {
+      const [day] = getWeekDays(WEEK_START, [0]);
+      const employees = [emp({ id: "a", name: "אבי", preferNotDays: [day] })];
+      const schedule = generateWeeklySchedule(employees, [st(1)], WEEK_START, [0]);
+      expect(namesAt(schedule, day, 1)).toEqual(["אבי"]);
+    });
+
+    it("לא-זמין קשיח לא משובץ לעולם, גם כשאין ברירה", () => {
+      const [day] = getWeekDays(WEEK_START, [0]);
+      const employees = [emp({ id: "a", name: "אבי", unavailableDays: [day] })];
+      const schedule = generateWeeklySchedule(employees, [st(1)], WEEK_START, [0]);
+      expect(namesAt(schedule, day, 1)).toEqual([""]);
+    });
+
+    it("בקשה ספציפית גוברת על מעדיף-שלא", () => {
+      const [day] = getWeekDays(WEEK_START, [0]);
+      const employees = [
+        emp({
+          id: "a", name: "אבי", hasStar: true, minWeeklyShifts: 1,
+          preferNotDays: [day], specificRequests: [{ date: day, stationId: 1 }],
+        }),
+        emp({ id: "b", name: "בני" }),
+      ];
+      const schedule = generateWeeklySchedule(employees, [st(1)], WEEK_START, [0]);
+      // בלי העדפת-הבקשה, אבי היה נחסם בשלבים 1-2 ובני היה תופס את המשבצת
+      expect(namesAt(schedule, day, 1)).toEqual(["אבי"]);
+    });
+  });
 });
 
 describe("calculateRecentLoad", () => {

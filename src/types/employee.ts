@@ -6,6 +6,8 @@ export interface Employee {
   minWeeklyShifts: number;
   maxWeeklyShifts?: number;
   unavailableDays?: string[];
+  /** ימים שהעובד מעדיף לא לעבוד בהם - האלגוריתם נמנע אלא אם אין ברירה */
+  preferNotDays?: string[];
   specificRequests?: { date: string; stationId: number }[];
   /** @deprecated use maxDailyShifts. Kept for backward-compat reads of old data. */
   canWorkMultipleStations?: boolean;

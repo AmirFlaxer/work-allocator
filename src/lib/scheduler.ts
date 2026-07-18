@@ -47,6 +47,12 @@ export function generateWeeklySchedule(
       ? stations.map(s => s.id)
       : emp.availableStations;
 
+  // חסימת יום: "לא זמין" תמיד; "מעדיף שלא" רק כשמכבדים העדפות רכות
+  // (respectSoft=false בשלבי אין-ברירה 7-8 ובבקשות ספציפיות).
+  const isBlocked = (emp: Employee, date: string, respectSoft: boolean) =>
+    (emp.unavailableDays?.includes(date) ?? false) ||
+    (respectSoft && (emp.preferNotDays?.includes(date) ?? false));
+
   const getAssignedCount = (empId: string) =>
     Object.values(employeeAssignments[empId]).filter(c => c > 0).length;
 
@@ -112,7 +118,7 @@ export function generateWeeklySchedule(
       for (const date of weekDays) {
         if (assignedCount >= employee.minWeeklyShifts) break;
         if (reachedMax(employee)) break;
-        if (employee.unavailableDays?.includes(date)) continue;
+        if (isBlocked(employee, date, true)) continue;
         if (employeeAssignments[employee.id][date]) continue;
         for (const stationId of availableStationsFor(employee)) {
           if (place(date, stationId, employee)) { assignedCount++; break; }
@@ -144,7 +150,7 @@ export function generateWeeklySchedule(
     .forEach(employee => {
     for (const date of weekDays) {
       if (employeeAssignments[employee.id][date]) continue;
-      if (employee.unavailableDays?.includes(date)) continue;
+      if (isBlocked(employee, date, true)) continue;
       if (reachedMax(employee)) break;
       for (const stationId of availableStationsFor(employee)) {
         if (place(date, stationId, employee)) break;
@@ -152,41 +158,51 @@ export function generateWeeklySchedule(
     }
   });
 
-  // Pass 5: Second round for remaining empty slots.
-  weekDays.forEach(date => {
-    stations.forEach(station => {
-      while (freeSlot(date, station.id) >= 0) {
-        const candidate = leastLoaded(employees.filter(emp =>
-          !emp.hasStar &&
-          availableStationsFor(emp).includes(station.id) &&
-          !employeeAssignments[emp.id][date] &&
-          !emp.unavailableDays?.includes(date) &&
-          !reachedMax(emp)
-        ));
-        if (!candidate) break;
-        place(date, station.id, candidate);
-      }
+  // שלבים 5+7: סבב מילוי למשבצות ריקות (משמרת ראשונה ביום, לא-מכוכבים).
+  // respectSoft=true מכבד "מעדיף שלא"; false = סבב אין-ברירה.
+  const runFillPass = (respectSoft: boolean) => {
+    weekDays.forEach(date => {
+      stations.forEach(station => {
+        while (freeSlot(date, station.id) >= 0) {
+          const candidate = leastLoaded(employees.filter(emp =>
+            !emp.hasStar &&
+            availableStationsFor(emp).includes(station.id) &&
+            !employeeAssignments[emp.id][date] &&
+            !isBlocked(emp, date, respectSoft) &&
+            !reachedMax(emp)
+          ));
+          if (!candidate) break;
+          place(date, station.id, candidate);
+        }
+      });
     });
-  });
+  };
 
-  // Pass 6: Last resort - allow extra shifts/day up to each employee's daily cap.
-  weekDays.forEach(date => {
-    stations.forEach(station => {
-      while (freeSlot(date, station.id) >= 0) {
-        const multi = leastLoaded(employees.filter(emp =>
-          availableStationsFor(emp).includes(station.id) &&
-          employeeAssignments[emp.id][date] < dailyShiftCap(emp) &&
-          !emp.unavailableDays?.includes(date) &&
-          !reachedMax(emp) &&
-          !slotArr(date, station.id).includes(emp.name)
-        ));
-        if (!multi) break;
-        const slot = freeSlot(date, station.id);
-        slotArr(date, station.id)[slot] = multi.name;
-        employeeAssignments[multi.id][date] += 1;
-      }
+  // שלבים 6+8: מוצא אחרון - משמרות נוספות באותו יום עד התקרה היומית.
+  const runMultiPass = (respectSoft: boolean) => {
+    weekDays.forEach(date => {
+      stations.forEach(station => {
+        while (freeSlot(date, station.id) >= 0) {
+          const multi = leastLoaded(employees.filter(emp =>
+            availableStationsFor(emp).includes(station.id) &&
+            employeeAssignments[emp.id][date] < dailyShiftCap(emp) &&
+            !isBlocked(emp, date, respectSoft) &&
+            !reachedMax(emp) &&
+            !slotArr(date, station.id).includes(emp.name)
+          ));
+          if (!multi) break;
+          const slot = freeSlot(date, station.id);
+          slotArr(date, station.id)[slot] = multi.name;
+          employeeAssignments[multi.id][date] += 1;
+        }
+      });
     });
-  });
+  };
+
+  runFillPass(true);   // שלב 5
+  runMultiPass(true);  // שלב 6
+  runFillPass(false);  // שלב 7 - אין ברירה: מותר לשבץ בימי "מעדיף שלא"
+  runMultiPass(false); // שלב 8
 
   return schedule;
 }
