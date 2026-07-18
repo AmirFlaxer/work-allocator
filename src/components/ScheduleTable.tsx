@@ -175,6 +175,7 @@ export function ScheduleTable({
                       const chipStyle = (cellColors && empColor)
                         ? { background: empColor.bg, color: empColor.text, borderRight: `3px solid ${empColor.accent}` }
                         : undefined;
+                      const softBroken = name && employees.find(e => e.name === name)?.preferNotDays?.includes(date);
 
                       return (
                         <TableCell
@@ -187,6 +188,12 @@ export function ScheduleTable({
                           <div className="flex items-center justify-center gap-1 group">
                             {name ? (
                               <div className="flex items-center gap-0.5">
+                                {softBroken && (
+                                  <span
+                                    className="inline-block w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0"
+                                    title="שובץ ביום שהעובד מעדיף שלא - לא הייתה חלופה"
+                                  />
+                                )}
                                 <Badge
                                   variant="secondary"
                                   draggable={!locked}
