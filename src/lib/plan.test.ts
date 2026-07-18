@@ -3,6 +3,7 @@ import {
   ENFORCE_QUOTA, FREE_EMPLOYEE_LIMIT, FREE_STATION_LIMIT,
   isOverEmployeeQuota, isOverStationQuota,
   canUseMultiSlotStations, canUseMonthlyReports, canUseAvailabilityInput,
+  canUseAdditionalAdmins,
 } from "@/lib/plan";
 
 describe("plan gates", () => {
@@ -24,5 +25,9 @@ describe("plan gates", () => {
 
   it("הזנת זמינות ע\"י העובד - מותרת כשהמתג כבוי, בלי תלות ב-plan", () => {
     expect(canUseAvailabilityInput()).toBe(true);
+  });
+
+  it("הזמנת מנהל נוסף - מותרת כשהמתג כבוי", () => {
+    expect(canUseAdditionalAdmins()).toBe(true);
   });
 });

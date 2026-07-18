@@ -69,3 +69,12 @@ export function canUseMonthlyReports(plan: Plan): boolean {
 export function canUseAvailabilityInput(): boolean {
   return !ENFORCE_QUOTA;
 }
+
+/**
+ * הזמנת מנהל נוסף לארגון - פיצ'ר Pro (מועמד). כמו canUseAvailabilityInput -
+ * קריאה טהורה בלי plan: כל עוד ENFORCE_QUOTA כבוי, פתוח לכולם. נקודת האכיפה
+ * העתידית: כפתור "הזמנת מנהל" (מנהלים שכבר הצטרפו לא ננעלים).
+ */
+export function canUseAdditionalAdmins(): boolean {
+  return !ENFORCE_QUOTA;
+}
