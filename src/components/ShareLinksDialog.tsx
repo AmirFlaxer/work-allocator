@@ -51,6 +51,7 @@ export function ShareLinksDialog({ open, onOpenChange, employees, orgId }: Share
     try {
       await navigator.clipboard.writeText(linkFor(token));
       setCopiedId(emp.id);
+      setManualLink(null);
       setTimeout(() => setCopiedId(null), 2000);
     } catch {
       setManualLink(linkFor(token));

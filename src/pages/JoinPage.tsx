@@ -3,7 +3,7 @@ import { useParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { InviteContext, classifyInvite } from "@/lib/team";
-import { PASSWORD_RULES, isPasswordValid } from "@/pages/LoginPage";
+import { PASSWORD_RULES, isPasswordValid } from "@/lib/password";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -35,6 +35,8 @@ export function JoinPage() {
 
   const [ctx, setCtx] = useState<InviteContext | null>(null);
   const [ctxLoaded, setCtxLoaded] = useState(false);
+  // כשל-רשת בטעינת ההזמנה - נבדל מ-token לא קיים (שם ה-RPC מחזיר null בלי שגיאה)
+  const [ctxFailed, setCtxFailed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -43,7 +45,10 @@ export function JoinPage() {
   useEffect(() => {
     if (!supabase || !token) { setCtxLoaded(true); return; }
     supabase.rpc("get_invite_context", { invite_token: token }).then(({ data, error }) => {
-      if (error) console.error("get_invite_context failed:", error);
+      if (error) {
+        console.error("get_invite_context failed:", error);
+        setCtxFailed(true);
+      }
       setCtx((data as InviteContext | null) ?? null);
       setCtxLoaded(true);
     });
@@ -57,6 +62,15 @@ export function JoinPage() {
     return (
       <JoinShell>
         <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+      </JoinShell>
+    );
+  }
+
+  if (ctxFailed) {
+    return (
+      <JoinShell>
+        <p className="text-sm text-muted-foreground">שגיאה בטעינת ההזמנה - בדקו את החיבור לרשת ונסו לרענן.</p>
+        <Button className="w-full" onClick={() => window.location.reload()}>רענון</Button>
       </JoinShell>
     );
   }

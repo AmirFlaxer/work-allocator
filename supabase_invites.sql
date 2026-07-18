@@ -66,8 +66,14 @@ BEGIN
 
   SELECT email INTO user_email FROM auth.users WHERE id = auth.uid();
 
-  INSERT INTO profiles (id, org_id, role, full_name, email)
-  VALUES (auth.uid(), inv.org_id, 'admin', accept_org_invite.full_name, user_email);
+  -- מרוץ נדיר: אותו משתמש מממש שני tokens שונים בשני טאבים במקביל - שניהם עוברים
+  -- את בדיקת ה-EXISTS לפני ששניהם נכתבו; השני ייתקל בהפרת PK ויקבל ערך ידידותי.
+  BEGIN
+    INSERT INTO profiles (id, org_id, role, full_name, email)
+    VALUES (auth.uid(), inv.org_id, 'admin', accept_org_invite.full_name, user_email);
+  EXCEPTION WHEN unique_violation THEN
+    RETURN jsonb_build_object('ok', false, 'reason', 'already_member');
+  END;
 
   UPDATE org_invites SET used_by = auth.uid(), used_at = NOW()
   WHERE token = invite_token;
