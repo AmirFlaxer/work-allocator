@@ -49,13 +49,26 @@ describe("pendingInvites", () => {
 });
 
 describe("inviteErrorMessage", () => {
-  it("ממפה כל reason להודעה בעברית", () => {
-    for (const reason of ["not_found", "used", "expired", "already_member", "self", "no_profile"]) {
-      const msg = inviteErrorMessage(reason);
-      expect(msg.length).toBeGreaterThan(5);
-    }
+  it("not_found - הודעה מדויקת בעברית", () => {
+    expect(inviteErrorMessage("not_found")).toBe("קישור ההזמנה אינו תקין");
+  });
+  it("used - הודעה מדויקת בעברית", () => {
+    expect(inviteErrorMessage("used")).toBe("קישור ההזמנה כבר מומש - בקשו מהמנהל קישור חדש");
+  });
+  it("expired - הודעה מדויקת בעברית", () => {
+    expect(inviteErrorMessage("expired")).toBe("תוקף ההזמנה פג - בקשו מהמנהל קישור חדש");
+  });
+  it("already_member - הודעה מדויקת בעברית", () => {
+    expect(inviteErrorMessage("already_member")).toBe("החשבון שלך כבר שייך לארגון - לא ניתן להצטרף לארגון נוסף");
+  });
+  it("self - הודעה מדויקת בעברית", () => {
+    expect(inviteErrorMessage("self")).toBe("לא ניתן להסיר את עצמך מהארגון");
+  });
+  it("no_profile - הודעה מדויקת בעברית", () => {
+    expect(inviteErrorMessage("no_profile")).toBe("החשבון שלך אינו משויך לארגון");
   });
   it("reason לא מוכר או חסר - הודעה כללית", () => {
-    expect(inviteErrorMessage(undefined)).toBe(inviteErrorMessage("whatever"));
+    expect(inviteErrorMessage(undefined)).toBe("שגיאה - נסו שוב");
+    expect(inviteErrorMessage("whatever")).toBe("שגיאה - נסו שוב");
   });
 });
