@@ -895,6 +895,20 @@ const Index = () => {
     );
   }, [schedule]);
 
+  // אזהרה לפני פעולות "כלפי חוץ" כשיש משבצות ריקות - הפעולה נשמרת ורצה רק אחרי אישור
+  const [pendingExportAction, setPendingExportAction] = useState<"publish" | "png" | "excel" | null>(null);
+
+  const exportActions = {
+    publish: handlePublish,
+    png:     handleExportToImage,
+    excel:   handleExportToExcel,
+  } as const;
+
+  const guardEmptySlots = (action: "publish" | "png" | "excel") => {
+    if (schedule && emptySlots > 0) setPendingExportAction(action);
+    else exportActions[action]();
+  };
+
   // ──────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-background" dir="rtl">
@@ -1196,7 +1210,7 @@ const Index = () => {
 
                 {/* Publish + share */}
                 {isSupabaseConfigured && schedule && (
-                  <Button variant={unpublishedChanges ? "default" : "outline"} onClick={handlePublish}
+                  <Button variant={unpublishedChanges ? "default" : "outline"} onClick={() => guardEmptySlots("publish")}
                     title={publishedAt ? `פורסם לאחרונה: ${new Date(publishedAt).toLocaleString("he-IL", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}` : "טרם פורסם"}>
                     <Megaphone className="h-4 w-4 ml-2" />
                     <span className="hidden sm:inline">פרסם לצוות</span>
@@ -1283,10 +1297,10 @@ const Index = () => {
                     <Switch id="cell-colors" checked={cellColors} onCheckedChange={setCellColors} />
                     <Label htmlFor="cell-colors" className="text-sm cursor-pointer text-muted-foreground">צבע לעובד</Label>
                   </div>
-                  <Button variant="outline" size="sm" onClick={handleExportToImage}>
+                  <Button variant="outline" size="sm" onClick={() => guardEmptySlots("png")}>
                     <Image className="h-4 w-4 ml-1" /> PNG
                   </Button>
-                  <Button variant="outline" size="sm" onClick={handleExportToExcel}>
+                  <Button variant="outline" size="sm" onClick={() => guardEmptySlots("excel")}>
                     <FileSpreadsheet className="h-4 w-4 ml-1" /> Excel
                   </Button>
                 </div>
@@ -1462,6 +1476,28 @@ const Index = () => {
               onClick={() => { if (stationToDelete) handleDeleteStation(stationToDelete.id); setStationToDelete(null); }}
             >
               מחק עמדה
+            </AlertDialogAction>
+            <AlertDialogCancel>ביטול</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Empty slots warning before publish/export */}
+      <AlertDialog open={pendingExportAction !== null} onOpenChange={open => { if (!open) setPendingExportAction(null); }}>
+        <AlertDialogContent dir="rtl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>יש {emptySlots} משבצות ריקות בשיבוץ</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingExportAction === "publish"
+                ? "השיבוץ יפורסם לצוות עם המשבצות הריקות. להמשיך?"
+                : "הקובץ ייווצא עם המשבצות הריקות. להמשיך?"}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-row-reverse gap-2">
+            <AlertDialogAction
+              onClick={() => { if (pendingExportAction) exportActions[pendingExportAction](); setPendingExportAction(null); }}
+            >
+              המשך בכל זאת
             </AlertDialogAction>
             <AlertDialogCancel>ביטול</AlertDialogCancel>
           </AlertDialogFooter>
