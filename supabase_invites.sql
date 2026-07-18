@@ -113,7 +113,8 @@ CREATE OR REPLACE FUNCTION org_has_members(check_org_id TEXT)
 RETURNS BOOLEAN LANGUAGE SQL SECURITY DEFINER STABLE SET search_path = public
 AS $$ SELECT EXISTS (SELECT 1 FROM profiles WHERE org_id = check_org_id); $$;
 
-GRANT EXECUTE ON FUNCTION org_has_members(TEXT) TO authenticated;
+REVOKE EXECUTE ON FUNCTION org_has_members(TEXT) FROM PUBLIC, anon;
+GRANT  EXECUTE ON FUNCTION org_has_members(TEXT) TO authenticated;
 
 DROP POLICY IF EXISTS "profile_create" ON profiles;
 CREATE POLICY "profile_create" ON profiles FOR INSERT
