@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { User } from "@supabase/supabase-js";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { inviteErrorMessage } from "@/lib/team";
 
 export interface Profile {
   id: string;
@@ -26,6 +27,10 @@ interface AuthContextValue {
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signUp: (email: string, password: string, orgName: string, fullName: string) => Promise<{ error: string | null }>;
   completeRegistration: (orgName: string, fullName: string) => Promise<{ error: string | null }>;
+  /** מימוש הזמנת-מנהל למשתמש מאומת (עם או בלי profile קודם) */
+  acceptInvite: (token: string, fullName: string) => Promise<{ error: string | null }>;
+  /** הרשמה + הצטרפות לארגון קיים דרך קישור הזמנה - בלי יצירת ארגון */
+  signUpAndJoin: (email: string, password: string, fullName: string, token: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
 }
 
@@ -67,6 +72,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const completeRegistration = async (orgName: string, fullName: string) => {
     if (!user) return { error: "לא מחובר" };
     return createOrgAndProfile(user.id, user.email ?? null, orgName, fullName);
+  };
+
+  // מימוש הזמנה: ה-RPC מאמת אטומית (token תקף, אין profile קיים) ויוצר את
+  // ה-profile בצד השרת. שגיאות עסקיות חוזרות כ-{ok:false, reason} ולא כ-exception.
+  const acceptInviteForUser = async (userId: string, token: string, fullName: string) => {
+    if (!supabase) return { error: "Supabase לא מוגדר" };
+    const { data, error } = await supabase.rpc("accept_org_invite", {
+      invite_token: token,
+      full_name: fullName.trim(),
+    });
+    if (error) {
+      console.error("accept_org_invite failed:", error);
+      return { error: "שגיאה בהצטרפות לארגון - נסו שוב" };
+    }
+    const result = data as { ok: boolean; reason?: string } | null;
+    if (!result?.ok) return { error: inviteErrorMessage(result?.reason) };
+    await loadProfile(userId);
+    return { error: null };
+  };
+
+  const acceptInvite = async (token: string, fullName: string) => {
+    if (!user) return { error: "לא מחובר" };
+    return acceptInviteForUser(user.id, token, fullName);
+  };
+
+  // כשל ב-accept אחרי signUp מוצלח משאיר משתמש מאומת בלי profile - זרם
+  // profileMissing הקיים הוא רשת הביטחון (JoinPage מטפל במצב הזה בטעינה מחדש).
+  const signUpAndJoin = async (email: string, password: string, fullName: string, token: string) => {
+    if (!supabase) return { error: "Supabase לא מוגדר" };
+    const { data, error: authError } = await supabase.auth.signUp({ email, password });
+    if (authError) return { error: "שגיאה בהרשמה - בדוק שהמייל תקין והסיסמה עומדת בדרישות" };
+    if (!data.user) return { error: "שגיאה ביצירת המשתמש" };
+    return acceptInviteForUser(data.user.id, token, fullName);
   };
 
   useEffect(() => {
@@ -120,7 +158,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, profile, org, loading, profileMissing, signIn, signUp, completeRegistration, signOut }}>
+    <AuthContext.Provider value={{ user, profile, org, loading, profileMissing, signIn, signUp, completeRegistration, acceptInvite, signUpAndJoin, signOut }}>
       {children}
     </AuthContext.Provider>
   );
