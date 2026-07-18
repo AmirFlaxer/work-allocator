@@ -10,6 +10,7 @@ import { isSupabaseConfigured } from "@/lib/supabase";
 import { LoginPage, CompleteRegistrationPage } from "@/pages/LoginPage";
 import { RegistrantsPage } from "@/pages/RegistrantsPage";
 import { SharePage } from "@/pages/SharePage";
+import { JoinPage } from "@/pages/JoinPage";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 
@@ -33,6 +34,8 @@ function AppContent() {
     <Routes>
       {/* עמוד ציבורי - נטען בלי שער התחברות */}
       <Route path="/s/:token" element={<SharePage />} />
+      {/* עמוד ציבורי - הצטרפות מנהל דרך קישור הזמנה */}
+      <Route path="/join/:token" element={<JoinPage />} />
       <Route path="*" element={<AuthenticatedApp />} />
     </Routes>
   );

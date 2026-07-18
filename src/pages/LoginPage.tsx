@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Building2, Mail, Lock, User, CheckCircle2, XCircle } from "lucide-react";
 
-const PASSWORD_RULES = [
+export const PASSWORD_RULES = [
   { id: "length",    label: "לפחות 8 תווים",          test: (p: string) => p.length >= 8 },
   { id: "upper",     label: "אות גדולה באנגלית (A-Z)", test: (p: string) => /[A-Z]/.test(p) },
   { id: "lower",     label: "אות קטנה באנגלית (a-z)", test: (p: string) => /[a-z]/.test(p) },
@@ -16,7 +16,7 @@ const PASSWORD_RULES = [
   { id: "symbols",   label: "לפחות 2 סימנים (!@#...)", test: (p: string) => (p.match(/[^A-Za-z0-9]/g) ?? []).length >= 2 },
 ];
 
-function isPasswordValid(p: string) {
+export function isPasswordValid(p: string) {
   return PASSWORD_RULES.every(r => r.test(p));
 }
 
