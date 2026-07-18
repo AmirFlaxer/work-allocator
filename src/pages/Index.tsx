@@ -19,6 +19,7 @@ import { ContactDeveloper } from "@/components/ContactDeveloper";
 import { AboutDialog } from "@/components/AboutDialog";
 import { HelpDialog, GuidesBanner } from "@/components/HelpGuides";
 import { ShareLinksDialog } from "@/components/ShareLinksDialog";
+import { TeamDialog } from "@/components/TeamDialog";
 import { generateWeeklySchedule } from "@/lib/scheduler";
 import { getWeekDays, getHebrewDayLabels, DEFAULT_ACTIVE_DAYS, ALL_HEBREW_DAYS, cellNames, stationSlots, cellKey, dailyShiftCap, parseISODate, toISODateLocal } from "@/lib/week";
 import { buildPublishedPayload, hasUnpublishedChanges, PublishedPayload } from "@/lib/share";
@@ -29,7 +30,7 @@ import {
   ChevronLeft, ChevronRight, Image, FileSpreadsheet, Eye, EyeOff,
   BarChart2, Search, Undo2, Redo2, Copy, Moon, Sun,
   BookTemplate, Upload, AlertTriangle, CheckCircle2,
-  Cloud, CloudOff, Loader2, LogOut, Building2, Megaphone, Share2,
+  Cloud, CloudOff, Loader2, LogOut, Building2, Megaphone, Share2, UserPlus,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import * as XLSX from "xlsx";
@@ -222,6 +223,7 @@ const Index = () => {
   const [publishedPayload, setPublishedPayload] = useState<PublishedPayload | null>(null);
   const [publishedAt, setPublishedAt] = useState<string | null>(null);
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const [teamDialogOpen, setTeamDialogOpen] = useState(false);
 
   useEffect(() => {
     if (!isSupabaseConfigured || !profile?.org_id) return;
@@ -929,6 +931,13 @@ const Index = () => {
               </div>
             )}
 
+            {isSupabaseConfigured && profile?.org_id && (
+              <Button variant="ghost" size="icon" onClick={() => setTeamDialogOpen(true)}
+                title="ניהול מנהלים" className="rounded-xl hover:bg-primary/10">
+                <UserPlus className="h-5 w-5" />
+              </Button>
+            )}
+
             <HelpDialog />
 
             <ContactDeveloper />
@@ -1425,6 +1434,15 @@ const Index = () => {
           open={shareDialogOpen}
           onOpenChange={setShareDialogOpen}
           employees={employees}
+          orgId={profile.org_id}
+        />
+      )}
+
+      {/* Team management dialog */}
+      {isSupabaseConfigured && profile?.org_id && (
+        <TeamDialog
+          open={teamDialogOpen}
+          onOpenChange={setTeamDialogOpen}
           orgId={profile.org_id}
         />
       )}
