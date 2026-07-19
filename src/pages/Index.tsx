@@ -13,6 +13,7 @@ import { EmployeeForm } from "@/components/EmployeeForm";
 import { StationManager } from "@/components/StationManager";
 import { WeeklyPreferences } from "@/components/WeeklyPreferences";
 import { ScheduleTable } from "@/components/ScheduleTable";
+import { EmployeeScheduleView } from "@/components/EmployeeScheduleView";
 import { ScheduleChanges } from "@/components/ScheduleChanges";
 import { MonthlyReport } from "@/components/MonthlyReport";
 import { ContactDeveloper } from "@/components/ContactDeveloper";
@@ -77,6 +78,7 @@ const MAX_HISTORY = 30;
 const ORG_DATA_KEYS = [
   "employees", "stations", "schedule", "weekStart", "savedSchedules",
   "scheduleTemplates", "lockedCells", "auditLog", "cellColors", "activeDays",
+  "employeeView",
 ];
 
 const Index = () => {
@@ -112,6 +114,9 @@ const Index = () => {
     const saved = localStorage.getItem("cellColors");
     return saved === null ? true : saved === "true";
   });
+
+  // ── Employee-view preference ─────────────────────────────
+  const [employeeView, setEmployeeView] = useState<boolean>(() => localStorage.getItem("employeeView") === "true");
 
   // ── Active work days ────────────────────────────────────
   const [activeDays, setActiveDays] = useState<number[]>(() => {
@@ -329,6 +334,7 @@ const Index = () => {
   useEffect(() => { localStorage.setItem("scheduleTemplates", JSON.stringify(templates)); syncToSupabase("scheduleTemplates", templates); }, [templates, syncToSupabase]);
   useEffect(() => { localStorage.setItem("cellColors", String(cellColors)); syncToSupabase("cellColors", cellColors); }, [cellColors, syncToSupabase]);
   useEffect(() => { localStorage.setItem("activeDays", JSON.stringify(activeDays)); syncToSupabase("activeDays", activeDays); }, [activeDays, syncToSupabase]);
+  useEffect(() => { localStorage.setItem("employeeView", String(employeeView)); syncToSupabase("employeeView", employeeView); }, [employeeView, syncToSupabase]);
 
   // ── Load from Supabase on mount ────────────────────────
   useEffect(() => {
@@ -363,6 +369,7 @@ const Index = () => {
         if (store.auditLog)       setAuditLog(store.auditLog as { [k: string]: AuditEntry[] });
         if (store.cellColors !== undefined) setCellColors(store.cellColors as boolean);
         if (store.activeDays) { resolvedActiveDays = store.activeDays as number[]; setActiveDays(resolvedActiveDays); }
+        if (store.employeeView !== undefined) setEmployeeView(store.employeeView as boolean);
       }
       hasLoaded.current = true;
       setTimeout(() => {
@@ -397,6 +404,7 @@ const Index = () => {
         else if (key === "auditLog")     setAuditLog(value as { [k: string]: AuditEntry[] });
         else if (key === "cellColors") setCellColors(value as boolean);
         else if (key === "activeDays") setActiveDays(value as number[]);
+        else if (key === "employeeView") setEmployeeView(value as boolean);
         setTimeout(() => { isRemoteUpdate.current = false; setSyncStatus("synced"); }, 200);
         toast({ title: "השיבוץ עודכן ממכשיר אחר" });
       })
@@ -1296,6 +1304,10 @@ const Index = () => {
 
                 <div className="flex flex-wrap items-center gap-3 justify-end">
                   <div className="flex items-center gap-2">
+                    <Switch id="employee-view" checked={employeeView} onCheckedChange={setEmployeeView} />
+                    <Label htmlFor="employee-view" className="text-sm cursor-pointer text-muted-foreground">תצוגה לפי עובדים</Label>
+                  </div>
+                  <div className="flex items-center gap-2">
                     <Switch id="cell-colors" checked={cellColors} onCheckedChange={setCellColors} />
                     <Label htmlFor="cell-colors" className="text-sm cursor-pointer text-muted-foreground">צבע לעובד</Label>
                   </div>
@@ -1308,20 +1320,31 @@ const Index = () => {
                 </div>
 
                 <div id="schedule-table">
-                  <ScheduleTable
-                    schedule={schedule}
-                    stations={stations}
-                    employees={employees}
-                    weekStart={weekStart}
-                    activeDays={activeDays}
-                    lockedCells={lockedCells}
-                    auditLog={auditLog}
-                    onCellEdit={handleCellEdit}
-                    onSwapCells={handleSwapCells}
-                    onToggleLock={handleToggleLock}
-                    cellColors={cellColors}
-                    darkMode={darkMode}
-                  />
+                  {employeeView ? (
+                    <EmployeeScheduleView
+                      employees={employees}
+                      stations={stations}
+                      schedule={schedule}
+                      weekStart={weekStart}
+                      activeDays={activeDays}
+                      darkMode={darkMode}
+                    />
+                  ) : (
+                    <ScheduleTable
+                      schedule={schedule}
+                      stations={stations}
+                      employees={employees}
+                      weekStart={weekStart}
+                      activeDays={activeDays}
+                      lockedCells={lockedCells}
+                      auditLog={auditLog}
+                      onCellEdit={handleCellEdit}
+                      onSwapCells={handleSwapCells}
+                      onToggleLock={handleToggleLock}
+                      cellColors={cellColors}
+                      darkMode={darkMode}
+                    />
+                  )}
                 </div>
 
                 {/* Workload - slim */}
