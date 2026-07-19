@@ -6,6 +6,7 @@ import { SharedScheduleResponse, viewerName, viewerShifts } from "@/lib/share";
 import { getWeekDays, getHebrewDayLabels, cellNames, stationSlots, parseISODate } from "@/lib/week";
 import { getEmployeeColor } from "@/lib/employeeColors";
 import { AvailabilityForm } from "@/components/AvailabilityForm";
+import { AbsenceForm } from "@/components/AbsenceForm";
 
 type LoadState =
   | { status: "loading" }
@@ -88,6 +89,8 @@ export function SharePage() {
         </div>
 
         <AvailabilityForm token={token!} />
+
+        <AbsenceForm token={token!} />
 
         {/* טבלת השיבוץ המלאה - קריאה בלבד */}
         <div className="rounded-2xl border border-border overflow-hidden bg-card">
