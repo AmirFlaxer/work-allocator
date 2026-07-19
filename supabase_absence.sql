@@ -27,7 +27,15 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON absence_reports TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON absence_reports TO service_role;
 
 -- realtime - כדי שהבאנר אצל המנהל יופיע חי בלי רענון
-ALTER PUBLICATION supabase_realtime ADD TABLE absence_reports;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables
+    WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'absence_reports'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE absence_reports;
+  END IF;
+END $$;
 
 -- הדלת הציבורית הראשונה: מחזירה לעובד את השבוע המפורסם + הימים שכבר דיווח עליהם.
 -- מקור השבוע הוא published_schedules (מה שהעובד רואה מולו), לא app_store.weekStart.
@@ -65,11 +73,15 @@ BEGIN
   DELETE FROM absence_reports
    WHERE org_id = t_org AND employee_id = t_emp
      AND date IN (SELECT jsonb_array_elements_text(week_dates))
-     AND date NOT IN (SELECT jsonb_array_elements_text(sick_dates));
+     AND NOT EXISTS (
+       SELECT 1 FROM jsonb_array_elements_text(sick_dates) AS s(d)
+       WHERE s.d = absence_reports.date
+     );
 
   INSERT INTO absence_reports (org_id, employee_id, date)
-  SELECT t_org, t_emp, d
-  FROM jsonb_array_elements_text(sick_dates) AS d
+  SELECT t_org, t_emp, s.d
+  FROM jsonb_array_elements_text(sick_dates) AS s(d)
+  WHERE s.d IS NOT NULL
   ON CONFLICT (org_id, employee_id, date) DO NOTHING;
 END;
 $$;
