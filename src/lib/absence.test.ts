@@ -31,6 +31,10 @@ describe("absencesForWeek", () => {
     const result = absencesForWeek(absences, employees, ["2026-07-22", "2026-07-23"]);
     expect(result).toEqual([{ employeeName: "אבי", date: "2026-07-23" }]);
   });
+  it("מתעלם מ-employee_id שאין לו עובד תואם", () => {
+    const result = absencesForWeek([{ employeeId: "x", date: "2026-07-23" }], employees, ["2026-07-23"]);
+    expect(result).toEqual([]);
+  });
 });
 
 describe("buildSickCounts", () => {
@@ -47,5 +51,15 @@ describe("buildSickCounts", () => {
   });
   it("עובד בלי דיווחים לא מופיע", () => {
     expect(buildSickCounts([], employees, 6, 2026)).toEqual({});
+  });
+  it("מסנן לפי שנה, לא רק לפי חודש", () => {
+    const absences: AbsenceRecord[] = [
+      { employeeId: "a", date: "2026-07-05" },
+      { employeeId: "a", date: "2025-07-05" }, // אותו חודש, שנה קודמת
+    ];
+    expect(buildSickCounts(absences, employees, 6, 2026)["אבי"]).toBe(1);
+  });
+  it("מתעלם מ-employee_id שאין לו עובד תואם", () => {
+    expect(buildSickCounts([{ employeeId: "x", date: "2026-07-05" }], employees, 6, 2026)).toEqual({});
   });
 });
