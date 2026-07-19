@@ -82,7 +82,9 @@ BEGIN
   -- ימי השבוע המפורסם נגזרים בשרת מ-published_schedules - הלקוח לא יכול להרחיב
   -- את הטווח, ולכן מספר ההכנסות (וההתראות) חסום במספר ימי-העבודה בשבוע.
   SELECT ARRAY(
-    SELECT to_char((p.payload ->> 'weekStart')::date + d.value::int, 'YYYY-MM-DD')
+    SELECT to_char((p.payload ->> 'weekStart')::date
+                     - EXTRACT(DOW FROM (p.payload ->> 'weekStart')::date)::int
+                     + d.value::int, 'YYYY-MM-DD')
     FROM published_schedules p
     CROSS JOIN LATERAL jsonb_array_elements_text(p.payload -> 'activeDays') AS d(value)
     WHERE p.org_id = t_org
@@ -105,6 +107,5 @@ BEGIN
 END;
 $$;
 
-REVOKE EXECUTE ON FUNCTION submit_absence_report(TEXT, JSONB, JSONB) FROM PUBLIC, anon, authenticated;
 DROP FUNCTION IF EXISTS submit_absence_report(TEXT, JSONB, JSONB);
 GRANT EXECUTE ON FUNCTION submit_absence_report(TEXT, JSONB) TO anon, authenticated;
