@@ -10,10 +10,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FileSpreadsheet, Printer, BarChart2, Download } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import * as XLSX from "xlsx";
+import { buildSickCounts, AbsenceRecord } from "@/lib/absence";
 
 interface MonthlyReportProps {
   savedSchedules: SavedSchedule[];
   stations: Station[];
+  absences?: AbsenceRecord[];
+  employees?: { id: string; name: string }[];
 }
 
 interface ShiftEntry { dateISO: string; date: string; stationName: string; }
@@ -114,7 +117,7 @@ function buildHistoricalData(savedSchedules: SavedSchedule[], stations: Station[
     });
 }
 
-export function MonthlyReport({ savedSchedules, stations }: MonthlyReportProps) {
+export function MonthlyReport({ savedSchedules, stations, absences, employees }: MonthlyReportProps) {
   const now = new Date();
   const [month, setMonth] = useState(now.getMonth());
   const [year, setYear] = useState(now.getFullYear());
@@ -132,6 +135,11 @@ export function MonthlyReport({ savedSchedules, stations }: MonthlyReportProps) 
   const report = useMemo(
     () => buildReport(uniqueSchedules, stations, month, year),
     [uniqueSchedules, stations, month, year]
+  );
+
+  const sickCounts = useMemo(
+    () => buildSickCounts(absences ?? [], employees ?? [], month, year),
+    [absences, employees, month, year],
   );
 
   const stationReport = useMemo(
@@ -156,11 +164,11 @@ export function MonthlyReport({ savedSchedules, stations }: MonthlyReportProps) 
     const wb = XLSX.utils.book_new();
     const ws1 = XLSX.utils.aoa_to_sheet([
       [`דוח משמרות חודשי - ${HEBREW_MONTHS[month]} ${year}`], [],
-      ["שם עובד", 'סה"כ משמרות'],
-      ...report.map(e => [e.name, e.totalShifts]),
+      ["שם עובד", 'סה"כ משמרות', "ימי מחלה שדווחו"],
+      ...report.map(e => [e.name, e.totalShifts, sickCounts[e.name] ?? 0]),
       [], ['סה"כ', totalShifts],
     ]);
-    ws1["!cols"] = [{ wch: 20 }, { wch: 15 }];
+    ws1["!cols"] = [{ wch: 20 }, { wch: 15 }, { wch: 18 }];
     XLSX.utils.book_append_sheet(wb, ws1, "סיכום");
 
     const detailData: (string | number)[][] = [
@@ -308,6 +316,11 @@ export function MonthlyReport({ savedSchedules, stations }: MonthlyReportProps) 
                                 {Array.from(stationCounts.entries()).map(([st, count]) => (
                                   <Badge key={st} variant="outline" className="text-xs">{st}: {count}</Badge>
                                 ))}
+                                {(sickCounts[emp.name] ?? 0) > 0 && (
+                                  <Badge variant="outline" className="border-destructive/40 text-destructive text-xs">
+                                    {sickCounts[emp.name]} ימי מחלה שדווחו
+                                  </Badge>
+                                )}
                               </div>
                             </td>
                             <td className="py-2 px-3">

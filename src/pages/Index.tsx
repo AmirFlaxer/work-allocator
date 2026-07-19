@@ -1516,7 +1516,7 @@ const Index = () => {
               <h2 className="text-xl font-extrabold">דוחות לחשבות</h2>
             </div>
             {canUseMonthlyReports(plan) ? (
-              <MonthlyReport savedSchedules={savedSchedules} stations={stations} />
+              <MonthlyReport savedSchedules={savedSchedules} stations={stations} absences={absences} employees={employees} />
             ) : (
               <div className="text-center py-16 bg-primary/5 border-2 border-dashed border-border rounded-2xl">
                 <p className="text-lg font-semibold mb-1">דוחות חודשיים - תוכנית Pro</p>
