@@ -25,18 +25,20 @@ serve(async (req) => {
     );
 
     // מנהלי הארגון (כל מי שיש לו profile בארגון) + מייליהם
-    const { data: admins } = await supabase
+    const { data: admins, error: adminsError } = await supabase
       .from("profiles").select("email").eq("org_id", record.org_id);
+    if (adminsError) console.error("שליפת מנהלי הארגון נכשלה:", adminsError);
     const recipients = (admins ?? []).map(a => a.email).filter((e): e is string => !!e);
     if (recipients.length === 0) return new Response("no recipients", { status: 200 });
 
     // שם העובד מתוך app_store (key employees)
-    const { data: empRow } = await supabase
+    const { data: empRow, error: empError } = await supabase
       .from("app_store").select("value").eq("org_id", record.org_id).eq("key", "employees").maybeSingle();
+    if (empError) console.error("שליפת רשימת העובדים נכשלה:", empError);
     const employees = (empRow?.value as { id: string; name: string }[] | null) ?? [];
     const empName = employees.find(e => e.id === record.employee_id)?.name ?? "עובד";
 
-    const dateLabel = new Date(record.date + "T00:00:00").toLocaleDateString("he-IL", {
+    const dateLabel = new Date(record.date + "T00:00:00Z").toLocaleDateString("he-IL", {
       weekday: "long", day: "2-digit", month: "2-digit", timeZone: "Asia/Jerusalem",
     });
 
