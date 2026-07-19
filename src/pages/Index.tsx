@@ -26,6 +26,7 @@ import { getWeekDays, getHebrewDayLabels, DEFAULT_ACTIVE_DAYS, ALL_HEBREW_DAYS, 
 import { buildPublishedPayload, hasUnpublishedChanges, PublishedPayload } from "@/lib/share";
 import { mergeAvailabilitySubmissions } from "@/lib/availability";
 import { AbsenceRecord, absencesForWeek, absentKeySet } from "@/lib/absence";
+import { hasNextWeekParam, stripWeekParam } from "@/lib/weekParam";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Plus, Calendar, Users, MapPin, Save, FolderOpen, Trash2,
@@ -276,6 +277,8 @@ const Index = () => {
   const isRemoteUpdate = useRef(false);
   const hasLoaded      = useRef(!isSupabaseConfigured);
   const syncTimers     = useRef<{ [key: string]: ReturnType<typeof setTimeout> }>({});
+  // ?week=next מהמייל השבועי - מיושם פעם אחת בלבד, אחרי שהטעינה הסתיימה
+  const weekJumpPending = useRef(hasNextWeekParam(window.location.search));
 
   // ── Persist to localStorage + Supabase ─────────────────
   // Debounced per key: rapid edits (e.g. filling several cells) collapse into
@@ -396,13 +399,19 @@ const Index = () => {
       setTimeout(() => {
         isRemoteUpdate.current = false;
         setSyncStatus("synced");
+        applyPendingWeekJump();
         if (data.length > 0 && store.employees) {
           applyAvailabilitySubmissions(store.employees as Employee[], resolvedWeekStart, resolvedActiveDays);
         }
         loadAbsences();
       }, 200);
     });
-  }, [profile?.org_id, applyAvailabilitySubmissions, loadAbsences]);
+  }, [profile?.org_id, applyAvailabilitySubmissions, loadAbsences, applyPendingWeekJump]);
+
+  // ── מסלול מקומי (בלי Supabase) - קפיצת ?week=next רצה פעם אחת עם העלייה ──
+  useEffect(() => {
+    if (!isSupabaseConfigured) applyPendingWeekJump();
+  }, [applyPendingWeekJump]);
 
   // ── מנוי realtime לדיווחי היעדרות ────────────────────────
   useEffect(() => {
@@ -876,6 +885,14 @@ const Index = () => {
   const handlePreviousWeek = () => setWeekStart(prev => { const d = new Date(prev); d.setDate(d.getDate() - 7); return d; });
   const handleNextWeek    = () => setWeekStart(prev => { const d = new Date(prev); d.setDate(d.getDate() + 7); return d; });
   const handleToday       = () => setWeekStart(getNextSunday(new Date()));
+
+  // קפיצה לשבוע הבא לפי הפרמטר מהמייל, וניקוי הפרמטר מה-URL כדי שרענון לא יקפיץ שוב
+  const applyPendingWeekJump = useCallback(() => {
+    if (!weekJumpPending.current) return;
+    weekJumpPending.current = false;
+    setWeekStart(getNextSunday(new Date()));
+    window.history.replaceState({}, "", window.location.pathname + stripWeekParam(window.location.search));
+  }, []);
 
   // ── Export ─────────────────────────────────────────────
   const handleExportToExcel = () => {
