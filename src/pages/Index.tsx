@@ -1408,6 +1408,7 @@ const Index = () => {
                       onToggleLock={handleToggleLock}
                       cellColors={cellColors}
                       darkMode={darkMode}
+                      absentKeys={absentKeys}
                     />
                   )}
                 </div>

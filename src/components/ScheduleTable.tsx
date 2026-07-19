@@ -14,6 +14,7 @@ import { calculateWorkloads } from "@/lib/scheduler";
 import { getWeekDays, getHebrewDayLabels, cellNames, stationSlots, cellKey, parseISODate } from "@/lib/week";
 import { useWeekHolidays } from "@/hooks/use-week-holidays";
 import { getEmployeeColor } from "@/lib/employeeColors";
+import { absenceKey } from "@/lib/absence";
 
 interface ScheduleTableProps {
   schedule: WeeklySchedule;
@@ -28,6 +29,7 @@ interface ScheduleTableProps {
   onToggleLock: (date: string, stationId: number, slotIndex: number) => void;
   cellColors?: boolean;
   darkMode?: boolean;
+  absentKeys?: Set<string>;
 }
 
 function badgeStyle(shifts: number): string {
@@ -43,6 +45,7 @@ export function ScheduleTable({
   lockedCells, auditLog, onCellEdit, onSwapCells, onToggleLock,
   cellColors = true,
   darkMode = false,
+  absentKeys,
 }: ScheduleTableProps) {
   const weekDays = getWeekDays(weekStart, activeDays);
   const hebrewDays = getHebrewDayLabels(activeDays);
@@ -176,6 +179,7 @@ export function ScheduleTable({
                         ? { background: empColor.bg, color: empColor.text, borderRight: `3px solid ${empColor.accent}` }
                         : undefined;
                       const softBroken = name && employees.find(e => e.name === name)?.preferNotDays?.includes(date);
+                      const isAbsent = name && absentKeys?.has(absenceKey(date, name));
 
                       return (
                         <TableCell
@@ -192,6 +196,12 @@ export function ScheduleTable({
                                   <span
                                     className="inline-block w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0"
                                     title="שובץ ביום שהעובד מעדיף שלא"
+                                  />
+                                )}
+                                {isAbsent && (
+                                  <span
+                                    className="inline-block w-2 h-2 rounded-full bg-destructive shrink-0 animate-pulse"
+                                    title="חולה - דורש החלפה"
                                   />
                                 )}
                                 <Badge
