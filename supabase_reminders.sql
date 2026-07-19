@@ -17,9 +17,11 @@ RETURNS TEXT LANGUAGE SQL STABLE SET search_path = public AS $$
   FROM (SELECT (NOW() AT TIME ZONE 'Asia/Jerusalem')::date AS d) s;
 $$;
 
+REVOKE EXECUTE ON FUNCTION upcoming_sunday() FROM PUBLIC, anon, authenticated;
+
 -- בוחרת את הארגונים שטרם פרסמו את השבוע הקרוב ושולחת לכל אחד קריאה ל-Edge Function.
--- ההשוואה היא >= : ארגון שפרסם שבועיים קדימה לא ינודנד.
--- ארגון בלי פרסום כלל (LEFT JOIN -> NULL) כן מקבל תזכורת.
+-- נשלח לארגון שה-weekStart המפורסם שלו קודם ליום ראשון הקרוב (או שאין לו פרסום כלל).
+-- ארגון שפרסם את השבוע הקרוב או מעבר לו לא ייבחר, ולכן לא ינודנד.
 CREATE OR REPLACE FUNCTION send_schedule_reminders()
 RETURNS INT LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE
@@ -43,6 +45,11 @@ BEGIN
   RETURN v_count;
 END;
 $$;
+
+-- הפונקציה נקראת מה-cron בלבד. בלי REVOKE היא הייתה נגישה דרך PostgREST לכל
+-- קורא anon/authenticated (ברירת-המחדל של Postgres היא EXECUTE ל-PUBLIC),
+-- ומאפשרת לכל אחד להפעיל מבול תזכורות לכל הארגונים.
+REVOKE EXECUTE ON FUNCTION send_schedule_reminders() FROM PUBLIC, anon, authenticated;
 
 -- הג'וב: כל יום חמישי ב-06:00 UTC = 09:00 שעון ישראל בקיץ, 08:00 בחורף.
 -- unschedule לפני schedule כדי שהחלה חוזרת לא תיצור כפילות.
