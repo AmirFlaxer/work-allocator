@@ -58,7 +58,6 @@ export function AbsenceForm({ token }: AbsenceFormProps) {
     setState({ status: "submitting", context, selected });
     supabase!.rpc("submit_absence_report", {
       share_token: token,
-      week_dates: weekDays,
       sick_dates: Array.from(selected),
     }).then(
       ({ error }) => setState({ status: error ? "error" : "submitted", context, selected }),

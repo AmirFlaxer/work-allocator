@@ -334,10 +334,14 @@ const Index = () => {
     if (!isSupabaseConfigured || !profile?.org_id) return;
     const { data, error } = await supabase!
       .from("absence_reports")
-      .select("employee_id, date")
+      .select("employee_id, date, resolved_at")
       .eq("org_id", profile.org_id);
     if (error) { console.error("קריאת דיווחי ההיעדרות נכשלה:", error); return; }
-    setAbsences((data ?? []).map(r => ({ employeeId: r.employee_id as string, date: r.date as string })));
+    setAbsences((data ?? []).map(r => ({
+      employeeId: r.employee_id as string,
+      date: r.date as string,
+      resolvedAt: (r.resolved_at as string | null) ?? null,
+    })));
   }, [profile?.org_id]);
 
   useEffect(() => { localStorage.setItem("employees", JSON.stringify(employees)); syncToSupabase("employees", employees); }, [employees, syncToSupabase]);
@@ -935,21 +939,29 @@ const Index = () => {
     );
   }, [schedule]);
 
-  // ── דיווחי היעדרות לשבוע המוצג + סט מפתחות לסימון בטבלה ──
+  // ── דיווחי היעדרות לשבוע המפורסם (מה שהעובד רואה) + סט מפתחות לסימון בטבלה ──
   const weekAbsences = useMemo(
-    () => absencesForWeek(absences, employees, getWeekDays(weekStart, activeDays)),
-    [absences, employees, weekStart, activeDays],
+    () => publishedPayload
+      ? absencesForWeek(absences, employees, getWeekDays(parseISODate(publishedPayload.weekStart), publishedPayload.activeDays))
+      : [],
+    [absences, employees, publishedPayload],
   );
   const absentKeys = useMemo(() => absentKeySet(absences, employees), [absences, employees]);
 
-  const handleResolveAbsence = async (employeeName: string, date: string) => {
+  const handleResolveAbsence = async (employeeId: string, date: string) => {
     if (!supabase || !profile?.org_id) return;
-    const emp = employees.find(e => e.name === employeeName);
-    if (!emp) return;
-    const { error } = await supabase.from("absence_reports").delete()
-      .eq("org_id", profile.org_id).eq("employee_id", emp.id).eq("date", date);
-    if (error) { toast({ title: "שגיאה בסימון הטיפול", variant: "destructive" }); return; }
-    setAbsences(prev => prev.filter(a => !(a.employeeId === emp.id && a.date === date)));
+    const { error } = await supabase.from("absence_reports")
+      .update({ resolved_at: new Date().toISOString() })
+      .eq("org_id", profile.org_id).eq("employee_id", employeeId).eq("date", date);
+    if (error) {
+      console.error("סימון הטיפול נכשל:", error);
+      toast({ title: "שגיאה בסימון הטיפול", variant: "destructive" });
+      return;
+    }
+    setAbsences(prev => prev.map(a =>
+      a.employeeId === employeeId && a.date === date
+        ? { ...a, resolvedAt: new Date().toISOString() }
+        : a));
   };
 
   // אזהרה לפני פעולות "כלפי חוץ" כשיש משבצות ריקות - הפעולה נשמרת ורצה רק אחרי אישור
@@ -1372,11 +1384,11 @@ const Index = () => {
                       <Thermometer className="h-4 w-4" /> דיווחי היעדרות לשבוע זה
                     </p>
                     {weekAbsences.map(a => (
-                      <div key={`${a.employeeName}-${a.date}`} className="flex items-center justify-between gap-2 text-sm">
+                      <div key={`${a.employeeId}-${a.date}`} className="flex items-center justify-between gap-2 text-sm">
                         <span>
                           {a.employeeName} - {parseISODate(a.date).toLocaleDateString("he-IL", { weekday: "long", day: "2-digit", month: "2-digit" })}
                         </span>
-                        <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => handleResolveAbsence(a.employeeName, a.date)}>
+                        <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => handleResolveAbsence(a.employeeId, a.date)}>
                           טופל
                         </Button>
                       </div>
