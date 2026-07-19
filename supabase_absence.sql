@@ -1,5 +1,5 @@
 -- ════════════════════════════════════════════════════════
--- Absence Reports - דיווח היעדרות/מחלה (spec: 2026-07-19)
+-- Absence Reports - דיווח היעדרות עקב מחלה (spec: 2026-07-19)
 -- מקור-אמת. מוחל על ה-DB דרך Supabase MCP (apply_migration), לא ידנית.
 -- דורש: organizations, share_tokens, published_schedules, app_store,
 -- get_my_org_id() (כבר רצים בפרודקשן).

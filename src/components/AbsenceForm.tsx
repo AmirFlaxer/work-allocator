@@ -20,7 +20,7 @@ interface FormState {
   selected?: Set<string>;
 }
 
-// טופס דיווח היעדרות/מחלה בעמוד השיתוף. עצמאי מבחינת טעינה (הקשר נפרד
+// טופס דיווח היעדרות עקב מחלה בעמוד השיתוף. עצמאי מבחינת טעינה (הקשר נפרד
 // מ-get_shared_schedule). מקור השבוע: published_schedules (השבוע שהעובד רואה).
 export function AbsenceForm({ token }: AbsenceFormProps) {
   const [state, setState] = useState<FormState>({ status: "loading" });
@@ -72,7 +72,7 @@ export function AbsenceForm({ token }: AbsenceFormProps) {
     <div className="rounded-2xl border border-border bg-card p-4 space-y-3">
       <div className="flex items-center gap-2">
         <Thermometer className="h-4 w-4 text-destructive" />
-        <p className="text-sm font-bold">דיווח היעדרות / מחלה</p>
+        <p className="text-sm font-bold">דיווח היעדרות עקב מחלה</p>
       </div>
       <p className="text-xs text-muted-foreground">סמן/י ימים בהם לא תוכל/י להגיע. הדיווח יישלח למנהל.</p>
       <div className="space-y-1.5">
