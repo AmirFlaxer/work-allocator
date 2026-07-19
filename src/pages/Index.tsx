@@ -350,6 +350,7 @@ const Index = () => {
         setEmployees([]); setStations([]); setSchedule(null);
         setSavedSchedules([]); setTemplates([]); setLockedCells(new Set()); setAuditLog({});
         setCellColors(true);
+        setEmployeeView(false);
         setActiveDays(DEFAULT_ACTIVE_DAYS);
         setWeekStart(getNextSunday(new Date()));
       } else {
