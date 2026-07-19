@@ -78,3 +78,11 @@ export function canUseAvailabilityInput(): boolean {
 export function canUseAdditionalAdmins(): boolean {
   return !ENFORCE_QUOTA;
 }
+
+/**
+ * דיווח היעדרויות/מחלה ע"י העובד דרך הקישור האישי - פיצ'ר Pro. כמו
+ * canUseAvailabilityInput: קריאה טהורה בלי plan (נקראת מעמוד השיתוף הציבורי).
+ */
+export function canUseAbsenceReporting(): boolean {
+  return !ENFORCE_QUOTA;
+}
