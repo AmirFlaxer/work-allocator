@@ -25,6 +25,7 @@ import { generateWeeklySchedule } from "@/lib/scheduler";
 import { getWeekDays, getHebrewDayLabels, DEFAULT_ACTIVE_DAYS, ALL_HEBREW_DAYS, cellNames, stationSlots, cellKey, dailyShiftCap, parseISODate, toISODateLocal } from "@/lib/week";
 import { buildPublishedPayload, hasUnpublishedChanges, PublishedPayload } from "@/lib/share";
 import { mergeAvailabilitySubmissions } from "@/lib/availability";
+import { AbsenceRecord, absencesForWeek, absentKeySet } from "@/lib/absence";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Plus, Calendar, Users, MapPin, Save, FolderOpen, Trash2,
@@ -32,6 +33,7 @@ import {
   BarChart2, Search, Undo2, Redo2, Copy, Moon, Sun,
   BookTemplate, Upload, AlertTriangle, CheckCircle2,
   Cloud, CloudOff, Loader2, LogOut, Building2, Megaphone, Share2, UserPlus,
+  Thermometer,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import * as XLSX from "xlsx";
@@ -133,6 +135,9 @@ const Index = () => {
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
   const [showEmployeeForm, setShowEmployeeForm] = useState(false);
   const [employeeSearch, setEmployeeSearch] = useState("");
+
+  // ── דיווחי היעדרות (עובד -> מנהל) ────────────────────────
+  const [absences, setAbsences] = useState<AbsenceRecord[]>([]);
 
   // ── Stations ───────────────────────────────────────────
   const [stations, setStations] = useState<Station[]>(() => {
@@ -324,6 +329,17 @@ const Index = () => {
     if (deleteError) console.error("מחיקת הגשות הזמינות נכשלה:", deleteError);
   }, [profile?.org_id, toast]);
 
+  // דיווחי היעדרות של הארגון - נטענים ונשמרים (לא נמחקים כמו תיבת-הזמינות).
+  const loadAbsences = useCallback(async () => {
+    if (!isSupabaseConfigured || !profile?.org_id) return;
+    const { data, error } = await supabase!
+      .from("absence_reports")
+      .select("employee_id, date")
+      .eq("org_id", profile.org_id);
+    if (error) { console.error("קריאת דיווחי ההיעדרות נכשלה:", error); return; }
+    setAbsences((data ?? []).map(r => ({ employeeId: r.employee_id as string, date: r.date as string })));
+  }, [profile?.org_id]);
+
   useEffect(() => { localStorage.setItem("employees", JSON.stringify(employees)); syncToSupabase("employees", employees); }, [employees, syncToSupabase]);
   useEffect(() => { localStorage.setItem("stations", JSON.stringify(stations)); syncToSupabase("stations", stations); }, [stations, syncToSupabase]);
   useEffect(() => { if (schedule) { localStorage.setItem("schedule", JSON.stringify(schedule)); syncToSupabase("schedule", schedule); } }, [schedule, syncToSupabase]);
@@ -379,9 +395,22 @@ const Index = () => {
         if (data.length > 0 && store.employees) {
           applyAvailabilitySubmissions(store.employees as Employee[], resolvedWeekStart, resolvedActiveDays);
         }
+        loadAbsences();
       }, 200);
     });
-  }, [profile?.org_id, applyAvailabilitySubmissions]);
+  }, [profile?.org_id, applyAvailabilitySubmissions, loadAbsences]);
+
+  // ── מנוי realtime לדיווחי היעדרות ────────────────────────
+  useEffect(() => {
+    if (!isSupabaseConfigured || !profile?.org_id || !supabase) return;
+    const channel = supabase
+      .channel(`absence-${profile.org_id}`)
+      .on("postgres_changes",
+        { event: "*", schema: "public", table: "absence_reports", filter: `org_id=eq.${profile.org_id}` },
+        () => loadAbsences())
+      .subscribe();
+    return () => { supabase!.removeChannel(channel); };
+  }, [profile?.org_id, loadAbsences]);
 
   // ── Real-time subscription ─────────────────────────────
   useEffect(() => {
@@ -906,6 +935,23 @@ const Index = () => {
     );
   }, [schedule]);
 
+  // ── דיווחי היעדרות לשבוע המוצג + סט מפתחות לסימון בטבלה ──
+  const weekAbsences = useMemo(
+    () => absencesForWeek(absences, employees, getWeekDays(weekStart, activeDays)),
+    [absences, employees, weekStart, activeDays],
+  );
+  const absentKeys = useMemo(() => absentKeySet(absences, employees), [absences, employees]);
+
+  const handleResolveAbsence = async (employeeName: string, date: string) => {
+    if (!supabase || !profile?.org_id) return;
+    const emp = employees.find(e => e.name === employeeName);
+    if (!emp) return;
+    const { error } = await supabase.from("absence_reports").delete()
+      .eq("org_id", profile.org_id).eq("employee_id", emp.id).eq("date", date);
+    if (error) { toast({ title: "שגיאה בסימון הטיפול", variant: "destructive" }); return; }
+    setAbsences(prev => prev.filter(a => !(a.employeeId === emp.id && a.date === date)));
+  };
+
   // אזהרה לפני פעולות "כלפי חוץ" כשיש משבצות ריקות - הפעולה נשמרת ורצה רק אחרי אישור
   const [pendingExportAction, setPendingExportAction] = useState<"publish" | "png" | "excel" | null>(null);
 
@@ -1319,6 +1365,24 @@ const Index = () => {
                     <FileSpreadsheet className="h-4 w-4 ml-1" /> Excel
                   </Button>
                 </div>
+
+                {weekAbsences.length > 0 && (
+                  <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 space-y-1.5 print:hidden">
+                    <p className="text-sm font-bold text-destructive flex items-center gap-1.5">
+                      <Thermometer className="h-4 w-4" /> דיווחי היעדרות לשבוע זה
+                    </p>
+                    {weekAbsences.map(a => (
+                      <div key={`${a.employeeName}-${a.date}`} className="flex items-center justify-between gap-2 text-sm">
+                        <span>
+                          {a.employeeName} - {parseISODate(a.date).toLocaleDateString("he-IL", { weekday: "long", day: "2-digit", month: "2-digit" })}
+                        </span>
+                        <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => handleResolveAbsence(a.employeeName, a.date)}>
+                          טופל
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
 
                 <div id="schedule-table">
                   {employeeView ? (
