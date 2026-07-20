@@ -280,6 +280,14 @@ const Index = () => {
   // ?week=next מהמייל השבועי - מיושם פעם אחת בלבד, אחרי שהטעינה הסתיימה
   const weekJumpPending = useRef(hasNextWeekParam(window.location.search));
 
+  // קפיצה לשבוע הבא לפי הפרמטר מהמייל, וניקוי הפרמטר מה-URL כדי שרענון לא יקפיץ שוב
+  const applyPendingWeekJump = useCallback(() => {
+    if (!weekJumpPending.current) return;
+    weekJumpPending.current = false;
+    setWeekStart(getNextSunday(new Date()));
+    window.history.replaceState({}, "", window.location.pathname + stripWeekParam(window.location.search));
+  }, []);
+
   // ── Persist to localStorage + Supabase ─────────────────
   // Debounced per key: rapid edits (e.g. filling several cells) collapse into
   // one upsert of the latest value instead of a full upload per keystroke.
@@ -885,14 +893,6 @@ const Index = () => {
   const handlePreviousWeek = () => setWeekStart(prev => { const d = new Date(prev); d.setDate(d.getDate() - 7); return d; });
   const handleNextWeek    = () => setWeekStart(prev => { const d = new Date(prev); d.setDate(d.getDate() + 7); return d; });
   const handleToday       = () => setWeekStart(getNextSunday(new Date()));
-
-  // קפיצה לשבוע הבא לפי הפרמטר מהמייל, וניקוי הפרמטר מה-URL כדי שרענון לא יקפיץ שוב
-  const applyPendingWeekJump = useCallback(() => {
-    if (!weekJumpPending.current) return;
-    weekJumpPending.current = false;
-    setWeekStart(getNextSunday(new Date()));
-    window.history.replaceState({}, "", window.location.pathname + stripWeekParam(window.location.search));
-  }, []);
 
   // ── Export ─────────────────────────────────────────────
   const handleExportToExcel = () => {
