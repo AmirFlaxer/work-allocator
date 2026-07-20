@@ -8,7 +8,7 @@
 // אסרציות על תוכן מוצג, אינטראקציה, או snapshot. אל תרחיבו אותה לבדיקה
 // התנהגותית - זה יהפוך אותה לבדיקה שצריך לעדכן בכל פיצ'ר עתידי ותיזנח.
 
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, vi, beforeEach, afterEach } from "vitest";
 import { createRoot, type Root } from "react-dom/client";
 import { act } from "react";
 
