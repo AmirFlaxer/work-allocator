@@ -48,15 +48,45 @@ GRANT EXECUTE ON FUNCTION get_share_availability_context(TEXT) TO anon, authenti
 
 -- הדלת הציבורית השנייה: העובד שולח/מעדכן את הזמינות שלו לשבוע הנתון.
 -- upsert - שליחה חוזרת דורסת את הקודמת. token לא קיים - לא עושה דבר.
+--
+-- הקשחת-קלט (סקירת OWASP, 2026-07-20): הגרסה הראשונה כתבה את week_start ואת
+-- unavailable_dates ישירות מהלקוח בלי ולידציה, ולכן מחזיק-טוקן יכול היה לכתוב
+-- JSONB בגודל בלתי-מוגבל. עכשיו: ולידציית-פורמט על שני השדות + תקרה של 7 תאריכים.
+--
+-- הערה מכוונת: השבוע *לא* נגזר בשרת (בשונה מ-submit_absence_report) כי מקורו
+-- ב-app_store.weekStart שנשמר כחותמת-זמן מלאה, והלקוח ממיר אותה בשעון ישראל
+-- המקומי. גזירה בשרת הייתה מסתכנת בהפרש של יום מול חישוב-הלקוח - כלומר הגשות
+-- תקינות שנדחות בשקט. הבידוד מושג ממילא דרך הטוקן (העובד כותב רק לשורה של עצמו).
 CREATE OR REPLACE FUNCTION submit_employee_availability(share_token TEXT, week_start TEXT, unavailable_dates JSONB)
-RETURNS VOID LANGUAGE SQL SECURITY DEFINER SET search_path = public AS $$
+RETURNS VOID LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+  t_org   TEXT;
+  t_emp   TEXT;
+  v_clean JSONB;
+BEGIN
+  SELECT org_id, employee_id INTO t_org, t_emp
+  FROM share_tokens WHERE token = share_token;
+  IF t_org IS NULL THEN RETURN; END IF;
+
+  IF week_start !~ '^\d{4}-\d{2}-\d{2}$' THEN RETURN; END IF;
+  IF jsonb_typeof(unavailable_dates) <> 'array' THEN RETURN; END IF;
+
+  -- רק תאריכים בפורמט תקין, ייחודיים, ולכל היותר 7 (מספר הימים בשבוע)
+  SELECT COALESCE(jsonb_agg(d), '[]'::jsonb) INTO v_clean
+  FROM (
+    SELECT DISTINCT value AS d
+    FROM jsonb_array_elements_text(unavailable_dates) AS t(value)
+    WHERE value ~ '^\d{4}-\d{2}-\d{2}$'
+    LIMIT 7
+  ) s;
+
   INSERT INTO employee_availability (org_id, employee_id, week_start, unavailable_dates, updated_at)
-  SELECT t.org_id, t.employee_id, week_start, unavailable_dates, NOW()
-  FROM share_tokens t WHERE t.token = share_token
+  VALUES (t_org, t_emp, week_start, v_clean, NOW())
   ON CONFLICT (org_id, employee_id)
   DO UPDATE SET week_start = EXCLUDED.week_start,
                 unavailable_dates = EXCLUDED.unavailable_dates,
                 updated_at = NOW();
+END;
 $$;
 
 GRANT EXECUTE ON FUNCTION submit_employee_availability(TEXT, TEXT, JSONB) TO anon, authenticated;
