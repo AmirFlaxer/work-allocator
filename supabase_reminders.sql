@@ -35,8 +35,10 @@ BEGIN
   -- הסוד המשותף נשמר ב-Vault ולא בגוף הפונקציה, כדי שלא יישב כטקסט גלוי ב-pg_proc.
   SELECT decrypted_secret INTO v_secret
   FROM vault.decrypted_secrets WHERE name = 'reminder_webhook_secret';
+  -- WARNING ולא NOTICE: סוד חסר משתיק את הפיצ'ר לחלוטין, וזה חייב לצוף בלוגים.
+  -- שימו לב שהחזרת 0 כאן נראית כמו "אין למי לשלוח" - ראו הערת האימות בראש הקובץ.
   IF v_secret IS NULL THEN
-    RAISE NOTICE 'reminder_webhook_secret חסר ב-Vault - התזכורות לא נשלחות';
+    RAISE WARNING 'reminder_webhook_secret חסר ב-Vault - התזכורות לא נשלחות';
     RETURN 0;
   END IF;
 
@@ -45,7 +47,12 @@ BEGIN
     FROM organizations o
     LEFT JOIN published_schedules p ON p.org_id = o.id
     WHERE COALESCE(p.payload ->> 'weekStart', '') < v_upcoming
-      AND EXISTS (SELECT 1 FROM app_store a WHERE a.org_id = o.id AND a.key = 'employees')
+      -- ארגון עם רשימת-עובדים ריקה הוא הרשמה-שנקטעה (ראו תקרית 16/7): עצם קיום
+      -- המפתח לא מספיק, כי האפליקציה כותבת employees:[] כבר בטעינה הראשונה.
+      AND EXISTS (
+        SELECT 1 FROM app_store a
+        WHERE a.org_id = o.id AND a.key = 'employees'
+          AND jsonb_typeof(a.value) = 'array' AND jsonb_array_length(a.value) > 0)
   LOOP
     PERFORM net.http_post(
       url     := 'https://zaffitnzxdlnwmyvmshp.supabase.co/functions/v1/notify-schedule-reminder',
