@@ -280,12 +280,16 @@ const Index = () => {
   // ?week=next מהמייל השבועי - מיושם פעם אחת בלבד, אחרי שהטעינה הסתיימה
   const weekJumpPending = useRef(hasNextWeekParam(window.location.search));
 
-  // קפיצה לשבוע הבא לפי הפרמטר מהמייל, וניקוי הפרמטר מה-URL כדי שרענון לא יקפיץ שוב
-  const applyPendingWeekJump = useCallback(() => {
-    if (!weekJumpPending.current) return;
+  // קפיצה לשבוע הבא לפי הפרמטר מהמייל, וניקוי הפרמטר מה-URL כדי שרענון לא יקפיץ שוב.
+  // מחזירה את התאריך שאליו קפצה (או null אם לא קפצה) כדי שהקוראים ידעו על אילו שבוע
+  // למזג את הגשות הזמינות, במקום להתבסס על השבוע שנטען מ-app_store.
+  const applyPendingWeekJump = useCallback((): Date | null => {
+    if (!weekJumpPending.current) return null;
     weekJumpPending.current = false;
-    setWeekStart(getNextSunday(new Date()));
+    const next = getNextSunday(new Date());
+    setWeekStart(next);
     window.history.replaceState({}, "", window.location.pathname + stripWeekParam(window.location.search));
+    return next;
   }, []);
 
   // ── Persist to localStorage + Supabase ─────────────────
@@ -407,9 +411,10 @@ const Index = () => {
       setTimeout(() => {
         isRemoteUpdate.current = false;
         setSyncStatus("synced");
-        applyPendingWeekJump();
+        const jumpedWeek = applyPendingWeekJump();
+        const effectiveWeek = jumpedWeek ?? resolvedWeekStart;
         if (data.length > 0 && store.employees) {
-          applyAvailabilitySubmissions(store.employees as Employee[], resolvedWeekStart, resolvedActiveDays);
+          applyAvailabilitySubmissions(store.employees as Employee[], effectiveWeek, resolvedActiveDays);
         }
         loadAbsences();
       }, 200);

@@ -2,6 +2,8 @@
 -- Schedule Reminders - תזכורת שבועית להכנת השיבוץ (spec: 2026-07-20)
 -- מקור-אמת. מוחל על ה-DB דרך Supabase MCP (apply_migration), לא ידנית.
 -- דורש: organizations, published_schedules (כבר רצים בפרודקשן).
+-- הפעלה: ליצור סוד ב-Vault בשם reminder_webhook_secret, להגדיר את אותו ערך
+-- כ-secret בשם REMINDER_WEBHOOK_SECRET של הפונקציה, ולפרוס אותה עם verify_jwt=false.
 -- ════════════════════════════════════════════════════════
 
 CREATE EXTENSION IF NOT EXISTS pg_cron;
@@ -28,16 +30,28 @@ DECLARE
   v_upcoming TEXT := upcoming_sunday();
   v_org      RECORD;
   v_count    INT := 0;
+  v_secret   TEXT;
 BEGIN
+  -- הסוד המשותף נשמר ב-Vault ולא בגוף הפונקציה, כדי שלא יישב כטקסט גלוי ב-pg_proc.
+  SELECT decrypted_secret INTO v_secret
+  FROM vault.decrypted_secrets WHERE name = 'reminder_webhook_secret';
+  IF v_secret IS NULL THEN
+    RAISE NOTICE 'reminder_webhook_secret חסר ב-Vault - התזכורות לא נשלחות';
+    RETURN 0;
+  END IF;
+
   FOR v_org IN
     SELECT o.id
     FROM organizations o
     LEFT JOIN published_schedules p ON p.org_id = o.id
     WHERE COALESCE(p.payload ->> 'weekStart', '') < v_upcoming
+      AND EXISTS (SELECT 1 FROM app_store a WHERE a.org_id = o.id AND a.key = 'employees')
   LOOP
     PERFORM net.http_post(
       url     := 'https://zaffitnzxdlnwmyvmshp.supabase.co/functions/v1/notify-schedule-reminder',
-      headers := '{"Content-Type": "application/json"}'::jsonb,
+      headers := jsonb_build_object(
+        'Content-Type', 'application/json',
+        'Authorization', 'Bearer ' || v_secret),
       body    := jsonb_build_object('org_id', v_org.id)
     );
     v_count := v_count + 1;

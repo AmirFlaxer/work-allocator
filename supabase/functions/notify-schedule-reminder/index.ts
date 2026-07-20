@@ -11,6 +11,9 @@
 //
 // להפעלה: לאמת דומיין ב-Resend, להחליף את כתובת ה-from למטה, ולבדוק מחדש.
 // אין כאן תקלה - זו התנהגות מכוונת.
+//
+// לפריסה: verify_jwt=false (האימות נעשה בקוד דרך REMINDER_WEBHOOK_SECRET),
+// ויש להגדיר את הסוד גם ב-Vault של המסד וגם כ-secret של הפונקציה.
 // ════════════════════════════════════════════════════════
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -19,6 +22,11 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY")!;
 const APP_NAME = "מחלק עבודה שבועי";
 const APP_URL  = "https://work-allocator.vercel.app";
+
+// הפונקציה נקראת רק מה-cron של המסד. הסוד המשותף מונע הפעלה מבחוץ.
+// כשל-סגור בכוונה: בלי REMINDER_WEBHOOK_SECRET מוגדר, הפונקציה מסרבת לפעול -
+// כך שהתזכורת לא נשלחת עד שההפעלה מבוצעת במפורש (ראו הערת-הכניסה למעלה).
+const WEBHOOK_SECRET = Deno.env.get("REMINDER_WEBHOOK_SECRET");
 
 // קלט משתמש משורבב ל-HTML - חובה להבריח.
 function escapeHtml(s: string): string {
@@ -32,6 +40,11 @@ function escapeHtml(s: string): string {
 
 serve(async (req) => {
   try {
+    if (!WEBHOOK_SECRET || req.headers.get("Authorization") !== `Bearer ${WEBHOOK_SECRET}`) {
+      console.error("קריאה ללא הרשאה ל-notify-schedule-reminder");
+      return new Response("unauthorized", { status: 401 });
+    }
+
     const { org_id } = await req.json() as { org_id: string };
 
     const supabase = createClient(
@@ -40,7 +53,7 @@ serve(async (req) => {
     );
 
     const { data: admins, error: adminsError } = await supabase
-      .from("profiles").select("email").eq("org_id", org_id);
+      .from("profiles").select("email").eq("org_id", org_id).eq("role", "admin");
     if (adminsError) console.error("שליפת מנהלי הארגון נכשלה:", adminsError);
     const recipients = (admins ?? []).map(a => a.email).filter((e): e is string => !!e);
     if (recipients.length === 0) return new Response("no recipients", { status: 200 });
@@ -69,7 +82,7 @@ serve(async (req) => {
         html: `
           <div dir="rtl" style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px;border:1px solid #e2e8f0;border-radius:12px;">
             <h2 style="color:#0e6c64;margin-top:0">תזכורת שבועית</h2>
-            <p style="font-size:15px">השיבוץ לשבוע הבא (<strong>${escapeHtml(range)}</strong>) של ${escapeHtml(orgName.slice(0, 100))} עדיין לא פורסם לצוות.</p>
+            <p style="font-size:15px">השיבוץ לשבוע הבא (<strong>${escapeHtml(range)}</strong>) של ${escapeHtml(orgName.slice(0, 100))} לא זוהה כמפורסם לצוות.</p>
             <p style="margin:24px 0">
               <a href="${APP_URL}/?week=next" style="background:#0e6c64;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;font-weight:bold;display:inline-block">פתח את השבוע הבא</a>
             </p>
