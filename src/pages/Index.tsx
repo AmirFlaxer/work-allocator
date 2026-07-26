@@ -37,7 +37,7 @@ import {
   Thermometer,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import * as XLSX from "xlsx";
+// xlsx נטען דינמית בתוך פעולות הייבוא/ייצוא - ראו את ההערה ב-MonthlyReport.
 import { toPng } from "html-to-image";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
@@ -745,8 +745,9 @@ const Index = () => {
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = (ev) => {
+    reader.onload = async (ev) => {
       try {
+        const XLSX = await import("xlsx");
         const data = new Uint8Array(ev.target?.result as ArrayBuffer);
         const wb = XLSX.read(data, { type: "array" });
         const ws = wb.Sheets[wb.SheetNames[0]];
@@ -902,8 +903,9 @@ const Index = () => {
   const handleToday       = () => setWeekStart(getNextSunday(new Date()));
 
   // ── Export ─────────────────────────────────────────────
-  const handleExportToExcel = () => {
+  const handleExportToExcel = async () => {
     if (!schedule) return;
+    const XLSX = await import("xlsx");
     const hebrewDays = getHebrewDayLabels(activeDays);
     const weekDays = getWeekDays(weekStart, activeDays);
     const headers = ["עמדה", ...hebrewDays.map((day, idx) =>
@@ -924,7 +926,12 @@ const Index = () => {
     const el = document.getElementById("schedule-table");
     if (!el) return;
     try {
-      const opts = { backgroundColor: "#ffffff", pixelRatio: 2, skipFonts: true };
+      const opts = {
+        backgroundColor: "#ffffff", pixelRatio: 2, skipFonts: true,
+        // רמזי-אינטראקציה ("לחץ · גרור להחלפה") מסומנים ב-data-export-hide -
+        // הם חסרי משמעות בתמונה סטטית ונחתכו בתחתיתה.
+        filter: (node: HTMLElement) => node.dataset?.exportHide !== "true",
+      };
       await toPng(el, opts).catch(() => {});
       const dataUrl = await toPng(el, opts);
       const link = document.createElement("a");
@@ -1386,7 +1393,13 @@ const Index = () => {
                   ) : (
                     <><span className="w-2 h-2 rounded-full bg-warning shrink-0" />
                       {emptySlots > 0 && <span className="text-foreground">{emptySlots} משבצות ריקות</span>}
-                      {underScheduled.length > 0 && <span className="text-muted-foreground">· מתחת למינימום: {underScheduled.map(w => `${w.emp.name} (${w.shifts}/${w.emp.minWeeklyShifts})`).join(", ")}</span>}
+                      {/* המפריד שייך לחיבור בין שני החלקים, ולכן מותנה בקיום שניהם -
+                          אחרת השורה נפתחת ב-"·" מיותר כשאין משבצות ריקות. */}
+                      {underScheduled.length > 0 && (
+                        <span className="text-muted-foreground">
+                          {emptySlots > 0 && "· "}מתחת למינימום: {underScheduled.map(w => `${w.emp.name} (${w.shifts}/${w.emp.minWeeklyShifts})`).join(", ")}
+                        </span>
+                      )}
                     </>
                   )}
                 </div>

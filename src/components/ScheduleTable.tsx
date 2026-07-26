@@ -281,7 +281,9 @@ export function ScheduleTable({
             </>
           )}
           <span className="flex items-center gap-1.5 mr-1"><Lock className="h-3 w-3 text-orange-400" /> נעול</span>
-          <span className="mr-auto opacity-50">לחץ - גרור להחלפה - 👁 פרטים - 🕐 היסטוריה - 🔒 נעילה</span>
+          {/* רמז-אינטראקציה: חסר משמעות בתמונה סטטית ונחתך בתחתיתה.
+              data-export-hide מסונן ע"י ה-filter של toPng ב-handleExportToImage. */}
+          <span className="mr-auto opacity-50" data-export-hide="true">לחץ - גרור להחלפה - 👁 פרטים - 🕐 היסטוריה - 🔒 נעילה</span>
         </div>
       </div>
 

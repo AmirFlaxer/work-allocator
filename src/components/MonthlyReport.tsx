@@ -9,7 +9,8 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FileSpreadsheet, Printer, BarChart2, Download } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
-import * as XLSX from "xlsx";
+// xlsx (424KB) נטען דינמית בתוך פעולות הייצוא בלבד - הוא היה חלק מהטעינה
+// הראשונית של כל משתמש, כולל מי שלא מייצא לעולם.
 import { buildSickCounts, AbsenceRecord } from "@/lib/absence";
 
 interface MonthlyReportProps {
@@ -160,7 +161,8 @@ export function MonthlyReport({ savedSchedules, stations, absences, employees }:
 
   const totalShifts = report.reduce((s, e) => s + e.totalShifts, 0);
 
-  const handleExportExcel = () => {
+  const handleExportExcel = async () => {
+    const XLSX = await import("xlsx");
     const wb = XLSX.utils.book_new();
     const ws1 = XLSX.utils.aoa_to_sheet([
       [`דוח משמרות חודשי - ${HEBREW_MONTHS[month]} ${year}`], [],
@@ -195,7 +197,8 @@ export function MonthlyReport({ savedSchedules, stations, absences, employees }:
     XLSX.writeFile(wb, `דוח_שכר_${HEBREW_MONTHS[month]}_${year}.xlsx`);
   };
 
-  const handleExportSingleEmployee = (emp: EmployeeReport) => {
+  const handleExportSingleEmployee = async (emp: EmployeeReport) => {
+    const XLSX = await import("xlsx");
     const wb = XLSX.utils.book_new();
     const data: (string | number)[][] = [
       [`דוח משמרות - ${emp.name}`],

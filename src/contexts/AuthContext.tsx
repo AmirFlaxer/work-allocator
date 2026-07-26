@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { User } from "@supabase/supabase-js";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { inviteErrorMessage } from "@/lib/team";
+import { signUpErrorMessage, isAlreadyRegistered, isDuplicateProfile } from "@/lib/authErrors";
 
 export interface Profile {
   id: string;
@@ -64,7 +65,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (orgError) return { error: "שגיאה ביצירת הארגון - נסה שוב" };
     const { error: profileError } = await supabase
       .from("profiles").insert({ id: userId, org_id: orgId, role: "admin", full_name: fullName, email });
-    if (profileError) return { error: "שגיאה ביצירת הפרופיל - נסה שוב" };
+    if (profileError) {
+      // מפתח כפול = למשתמש כבר יש פרופיל. "נסה שוב" כאן הוא לולאה אינסופית -
+      // הניסיון הבא ייכשל בדיוק אותו דבר.
+      if (isDuplicateProfile(profileError)) {
+        return { error: "החשבון הזה כבר משויך לארגון - נסו להתחבר מלשונית \"כניסה\"" };
+      }
+      return { error: "שגיאה ביצירת הפרופיל - נסה שוב" };
+    }
     await loadProfile(userId);
     return { error: null };
   };
@@ -102,8 +110,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signUpAndJoin = async (email: string, password: string, fullName: string, token: string) => {
     if (!supabase) return { error: "Supabase לא מוגדר" };
     const { data, error: authError } = await supabase.auth.signUp({ email, password });
-    if (authError) return { error: "שגיאה בהרשמה - בדוק שהמייל תקין והסיסמה עומדת בדרישות" };
+    if (authError) return { error: signUpErrorMessage(authError) };
     if (!data.user) return { error: "שגיאה ביצירת המשתמש" };
+    if (isAlreadyRegistered(data.user)) {
+      return { error: signUpErrorMessage({ code: "user_already_exists" }) };
+    }
     return acceptInviteForUser(data.user.id, token, fullName);
   };
 
@@ -142,8 +153,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!supabase) return { error: "Supabase לא מוגדר" };
 
     const { data, error: authError } = await supabase.auth.signUp({ email, password });
-    if (authError) return { error: "שגיאה בהרשמה - בדוק שהמייל תקין והסיסמה ארוכה מ-6 תווים" };
+    if (authError) return { error: signUpErrorMessage(authError) };
     if (!data.user) return { error: "שגיאה ביצירת המשתמש" };
+    // מייל קיים אינו חוזר כשגיאה - ראו את ההסבר ב-isAlreadyRegistered.
+    if (isAlreadyRegistered(data.user)) {
+      return { error: signUpErrorMessage({ code: "user_already_exists" }) };
+    }
 
     return createOrgAndProfile(data.user.id, email, orgName, fullName);
   };
