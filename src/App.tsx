@@ -7,7 +7,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { isSupabaseConfigured } from "@/lib/supabase";
-import { LoginPage, CompleteRegistrationPage } from "@/pages/LoginPage";
+import { LoginPage, CompleteRegistrationPage, SetNewPasswordPage } from "@/pages/LoginPage";
 import { RegistrantsPage } from "@/pages/RegistrantsPage";
 import { SharePage } from "@/pages/SharePage";
 import { JoinPage } from "@/pages/JoinPage";
@@ -42,7 +42,7 @@ function AppContent() {
 }
 
 function AuthenticatedApp() {
-  const { user, loading, profileMissing } = useAuth();
+  const { user, loading, profileMissing, recoveryMode } = useAuth();
 
   if (loading) {
     return (
@@ -53,6 +53,12 @@ function AuthenticatedApp() {
         </div>
       </div>
     );
+  }
+
+  // קודם לכל השאר: קישור-שחזור יוצר session תקף, ולכן בלי הבדיקה הזו המשתמש
+  // היה נוחת ישר על האפליקציה ומסך קביעת-הסיסמה לא היה מוצג לעולם.
+  if (isSupabaseConfigured && user && recoveryMode) {
+    return <SetNewPasswordPage />;
   }
 
   if (isSupabaseConfigured && !user) {

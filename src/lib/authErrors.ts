@@ -36,3 +36,32 @@ export function isAlreadyRegistered(user: { identities?: unknown[] } | null | un
 export function isDuplicateProfile(error: SupabaseError | null | undefined): boolean {
   return error?.code === "23505";
 }
+
+// בקשת-שחזור: אין להסגיר אם הכתובת רשומה. השגיאה היחידה ששווה להציג היא
+// חסימת-קצב, כי היא מסבירה למה כלום לא קרה ומה לעשות (להמתין).
+export function resetRequestErrorMessage(error: SupabaseError | null | undefined): string {
+  const code = error?.code ?? "";
+  const message = (error?.message ?? "").toLowerCase();
+  if (code === "over_email_send_rate_limit" || message.includes("rate limit")) {
+    return "נשלחו יותר מדי בקשות - המתינו דקה ונסו שוב";
+  }
+  return "שליחת המייל נכשלה - נסו שוב, ואם זה חוזר פנו למפתח";
+}
+
+// קביעת סיסמה חדשה. "same_password" הוא המקרה השכיח: מי ששכח סיסמה מנחש את
+// הישנה ומקבל שגיאה שבלי תרגום נראית כתקלה במערכת.
+export function updatePasswordErrorMessage(error: SupabaseError | null | undefined): string {
+  const code = error?.code ?? "";
+  const message = (error?.message ?? "").toLowerCase();
+  if (code === "same_password" || message.includes("should be different")) {
+    return "הסיסמה החדשה זהה לקודמת - בחרו סיסמה אחרת";
+  }
+  if (code === "weak_password" || message.includes("password")) {
+    return "הסיסמה אינה עומדת בדרישות - ראו את הרשימה מתחת לשדה";
+  }
+  // קישור-שחזור תקף לזמן מוגבל; בלי ההודעה הזו המשתמש לא מבין למה זה נכשל.
+  if (message.includes("expired") || message.includes("invalid") || code === "session_not_found") {
+    return "קישור השחזור פג או כבר נוצל - בקשו קישור חדש ממסך הכניסה";
+  }
+  return "עדכון הסיסמה נכשל - נסו שוב";
+}

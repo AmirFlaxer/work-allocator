@@ -1,5 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { signUpErrorMessage, isAlreadyRegistered, isDuplicateProfile } from "@/lib/authErrors";
+import {
+  signUpErrorMessage, isAlreadyRegistered, isDuplicateProfile,
+  resetRequestErrorMessage, updatePasswordErrorMessage,
+} from "@/lib/authErrors";
 
 describe("signUpErrorMessage", () => {
   it("מייל כבר רשום - מפנה להתחברות ולא לבדיקת פורמט", () => {
@@ -45,6 +48,36 @@ describe("isAlreadyRegistered", () => {
   it("היעדר identities לא נחשב מייל קיים", () => {
     expect(isAlreadyRegistered({})).toBe(false);
     expect(isAlreadyRegistered(null)).toBe(false);
+  });
+});
+
+describe("resetRequestErrorMessage", () => {
+  it("חסימת-קצב מוסברת עם פעולה", () => {
+    expect(resetRequestErrorMessage({ code: "over_email_send_rate_limit" })).toContain("המתינו");
+  });
+
+  it("אינה מסגירה אם הכתובת רשומה", () => {
+    const msg = resetRequestErrorMessage({ message: "user not found" });
+    expect(msg).not.toContain("רשומה");
+    expect(msg).not.toContain("לא נמצא");
+  });
+});
+
+describe("updatePasswordErrorMessage", () => {
+  it("סיסמה זהה לקודמת - המקרה השכיח של מי ששכח", () => {
+    expect(updatePasswordErrorMessage({ code: "same_password" })).toContain("זהה לקודמת");
+  });
+
+  it("קישור שפג מוסבר עם הדרך הלאה", () => {
+    expect(updatePasswordErrorMessage({ message: "Token has expired" })).toContain("קישור");
+  });
+
+  it("סיסמה חלשה", () => {
+    expect(updatePasswordErrorMessage({ code: "weak_password" })).toContain("דרישות");
+  });
+
+  it("עמיד לשגיאה ריקה", () => {
+    expect(updatePasswordErrorMessage(null).length).toBeGreaterThan(0);
   });
 });
 

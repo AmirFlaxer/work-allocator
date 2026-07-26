@@ -2,7 +2,10 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { User } from "@supabase/supabase-js";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { inviteErrorMessage } from "@/lib/team";
-import { signUpErrorMessage, isAlreadyRegistered, isDuplicateProfile } from "@/lib/authErrors";
+import {
+  signUpErrorMessage, isAlreadyRegistered, isDuplicateProfile,
+  resetRequestErrorMessage, updatePasswordErrorMessage,
+} from "@/lib/authErrors";
 
 export interface Profile {
   id: string;
@@ -25,6 +28,10 @@ interface AuthContextValue {
   loading: boolean;
   /** המשתמש מאומת אבל אין לו פרופיל - הרשמה שנקטעה באמצע */
   profileMissing: boolean;
+  /** הגענו מקישור שחזור-סיסמה - חייבים לקבוע סיסמה חדשה לפני כל דבר אחר */
+  recoveryMode: boolean;
+  requestPasswordReset: (email: string) => Promise<{ error: string | null }>;
+  updatePassword: (newPassword: string) => Promise<{ error: string | null }>;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signUp: (email: string, password: string, orgName: string, fullName: string) => Promise<{ error: string | null }>;
   completeRegistration: (orgName: string, fullName: string) => Promise<{ error: string | null }>;
@@ -43,6 +50,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [org, setOrg]         = useState<Organization | null>(null);
   const [loading, setLoading] = useState(isSupabaseConfigured);
   const [profileMissing, setProfileMissing] = useState(false);
+  const [recoveryMode, setRecoveryMode] = useState(false);
 
   const loadProfile = async (userId: string) => {
     if (!supabase) return;
@@ -130,7 +138,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      // קישור-שחזור יוצר session תקף, ולכן בלי הדגל הזה המשתמש היה נוחת ישר
+      // על האפליקציה מחוברת - ומסך קביעת-הסיסמה לא היה נראה לעולם.
+      if (event === "PASSWORD_RECOVERY") setRecoveryMode(true);
       setUser(session?.user ?? null);
       if (session?.user) {
         loadProfile(session.user.id);
@@ -163,6 +174,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return createOrgAndProfile(data.user.id, email, orgName, fullName);
   };
 
+  // Supabase לא מגלה אם הכתובת רשומה (מניעת מיפוי-משתמשים), ולכן גם אנחנו
+  // מחזירים הצלחה תמיד והמסך אומר "אם הכתובת רשומה - נשלח מייל".
+  const requestPasswordReset = async (email: string) => {
+    if (!supabase) return { error: "Supabase לא מוגדר" };
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+      redirectTo: window.location.origin,
+    });
+    return { error: error ? resetRequestErrorMessage(error) : null };
+  };
+
+  const updatePassword = async (newPassword: string) => {
+    if (!supabase) return { error: "Supabase לא מוגדר" };
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    if (error) return { error: updatePasswordErrorMessage(error) };
+    setRecoveryMode(false);
+    return { error: null };
+  };
+
   const signOut = async () => {
     if (!supabase) return;
     await supabase.auth.signOut();
@@ -170,10 +199,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setProfile(null);
     setOrg(null);
     setProfileMissing(false);
+    setRecoveryMode(false);
   };
 
   return (
-    <AuthContext.Provider value={{ user, profile, org, loading, profileMissing, signIn, signUp, completeRegistration, acceptInvite, signUpAndJoin, signOut }}>
+    <AuthContext.Provider value={{ user, profile, org, loading, profileMissing, recoveryMode, signIn, signUp, completeRegistration, acceptInvite, signUpAndJoin, requestPasswordReset, updatePassword, signOut }}>
       {children}
     </AuthContext.Provider>
   );

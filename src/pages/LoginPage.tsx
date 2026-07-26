@@ -10,6 +10,75 @@ import { Loader2, Building2, Mail, Lock, User, CheckCircle2, XCircle } from "luc
 
 import { PASSWORD_RULES, isPasswordValid } from "@/lib/password";
 
+// מסך קביעת-סיסמה אחרי לחיצה על קישור-השחזור מהמייל. הקישור יוצר session תקף,
+// ולכן AuthContext מסמן recoveryMode כדי שהמסך הזה יקדים את האפליקציה עצמה -
+// אחרת המשתמש היה נוחת מחובר ולא מחליף סיסמה לעולם.
+export function SetNewPasswordPage() {
+  const { updatePassword, signOut } = useAuth();
+  const { toast } = useToast();
+  const [loading, setLoading] = useState(false);
+  const [password, setPassword] = useState("");
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isPasswordValid(password)) return;
+    setLoading(true);
+    const { error } = await updatePassword(password);
+    if (error) toast({ title: "שגיאה", description: error, variant: "destructive" });
+    else toast({ title: "הסיסמה עודכנה", description: "אפשר להמשיך לעבוד" });
+    setLoading(false);
+  };
+
+  return (
+    <div className="min-h-screen bg-background flex items-center justify-center px-6" dir="rtl">
+      <Card className="w-full max-w-md shadow-xl border-border/40">
+        <CardContent className="pt-6 space-y-4">
+          <div className="flex items-center gap-2.5">
+            <span className="w-6 h-0.5 bg-primary" />
+            <span className="text-[11px] tracking-[0.2em] uppercase font-bold text-primary">סיסמה חדשה</span>
+          </div>
+          <p className="text-sm text-muted-foreground">בחרו סיסמה חדשה לחשבון.</p>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">סיסמה חדשה</Label>
+              <div className="relative">
+                <Lock className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input type="password" value={password} onChange={e => setPassword(e.target.value)}
+                  placeholder="לפחות 8 תווים" className="pr-9" required />
+              </div>
+              {password.length > 0 && <PasswordChecklist password={password} />}
+            </div>
+            <Button type="submit" className="w-full bg-primary hover:bg-primary/90"
+              disabled={loading || !isPasswordValid(password)}>
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "עדכן סיסמה"}
+            </Button>
+            <Button type="button" variant="ghost" className="w-full text-muted-foreground" onClick={signOut}>
+              ביטול וחזרה למסך הכניסה
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// רשימת דרישות-הסיסמה - הופיעה רק בהרשמה, ונחוצה בכל מקום שקובעים בו סיסמה.
+function PasswordChecklist({ password }: { password: string }) {
+  return (
+    <ul className="space-y-1 pt-1">
+      {PASSWORD_RULES.map(rule => {
+        const ok = rule.test(password);
+        return (
+          <li key={rule.id} className={`flex items-center gap-2 text-xs ${ok ? "text-green-600 dark:text-green-400" : "text-muted-foreground"}`}>
+            {ok ? <CheckCircle2 className="h-3.5 w-3.5 shrink-0" /> : <XCircle className="h-3.5 w-3.5 shrink-0" />}
+            {rule.label}
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
 // Shown when a user is authenticated but has no profile - a registration that
 // was interrupted after the auth user was created (e.g. failed org insert or
 // email-confirmation flow). Lets them finish creating the org and profile.
@@ -71,12 +140,26 @@ export function CompleteRegistrationPage() {
 }
 
 export function LoginPage() {
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, requestPasswordReset } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
 
   const [loginEmail,    setLoginEmail]    = useState("");
   const [loginPassword, setLoginPassword] = useState("");
+
+  // מצב-שכחתי בתוך לשונית הכניסה, בלי route נוסף: קישור-השחזור חוזר לשורש
+  // ונתפס ע"י אירוע PASSWORD_RECOVERY, ולכן אין צורך בכתובת ייעודית.
+  const [forgotMode, setForgotMode] = useState(false);
+  const [resetSent,  setResetSent]  = useState(false);
+
+  const handleForgot = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    const { error } = await requestPasswordReset(loginEmail);
+    if (error) toast({ title: "שגיאה", description: error, variant: "destructive" });
+    else setResetSent(true);
+    setLoading(false);
+  };
 
   const [orgName,      setOrgName]      = useState("");
   const [fullName,     setFullName]     = useState("");
@@ -143,27 +226,65 @@ export function LoginPage() {
 
                 {/* Login */}
                 <TabsContent value="login">
-                  <form onSubmit={handleLogin} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label className="text-sm font-medium">אימייל</Label>
-                      <div className="relative">
-                        <Mail className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input type="email" value={loginEmail} onChange={e => setLoginEmail(e.target.value)}
-                          placeholder="your@email.com" className="pr-9" required />
+                  {resetSent ? (
+                    <div className="space-y-4">
+                      <div className="p-3 rounded-lg bg-primary/5 border border-primary/20 text-sm text-primary">
+                        אם הכתובת רשומה במערכת - נשלח אליה קישור לאיפוס סיסמה.
+                        בדקו גם בתיקיית הספאם.
                       </div>
+                      <Button type="button" variant="ghost" className="w-full text-muted-foreground"
+                        onClick={() => { setResetSent(false); setForgotMode(false); }}>
+                        חזרה למסך הכניסה
+                      </Button>
                     </div>
-                    <div className="space-y-2">
-                      <Label className="text-sm font-medium">סיסמה</Label>
-                      <div className="relative">
-                        <Lock className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input type="password" value={loginPassword} onChange={e => setLoginPassword(e.target.value)}
-                          placeholder="••••••••" className="pr-9" required />
+                  ) : forgotMode ? (
+                    <form onSubmit={handleForgot} className="space-y-4">
+                      <p className="text-sm text-muted-foreground">
+                        הכניסו את כתובת המייל של החשבון ונשלח אליה קישור לבחירת סיסמה חדשה.
+                      </p>
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium">אימייל</Label>
+                        <div className="relative">
+                          <Mail className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                          <Input type="email" value={loginEmail} onChange={e => setLoginEmail(e.target.value)}
+                            placeholder="your@email.com" className="pr-9" required />
+                        </div>
                       </div>
-                    </div>
-                    <Button type="submit" className="w-full bg-primary hover:bg-primary/90" disabled={loading}>
-                      {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "כניסה למערכת"}
-                    </Button>
-                  </form>
+                      <Button type="submit" className="w-full bg-primary hover:bg-primary/90" disabled={loading}>
+                        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "שלח קישור לאיפוס"}
+                      </Button>
+                      <Button type="button" variant="ghost" className="w-full text-muted-foreground"
+                        onClick={() => setForgotMode(false)}>
+                        חזרה
+                      </Button>
+                    </form>
+                  ) : (
+                    <form onSubmit={handleLogin} className="space-y-4">
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium">אימייל</Label>
+                        <div className="relative">
+                          <Mail className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                          <Input type="email" value={loginEmail} onChange={e => setLoginEmail(e.target.value)}
+                            placeholder="your@email.com" className="pr-9" required />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium">סיסמה</Label>
+                        <div className="relative">
+                          <Lock className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                          <Input type="password" value={loginPassword} onChange={e => setLoginPassword(e.target.value)}
+                            placeholder="••••••••" className="pr-9" required />
+                        </div>
+                      </div>
+                      <Button type="submit" className="w-full bg-primary hover:bg-primary/90" disabled={loading}>
+                        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "כניסה למערכת"}
+                      </Button>
+                      <button type="button" onClick={() => setForgotMode(true)}
+                        className="w-full text-xs text-muted-foreground hover:text-foreground transition-colors">
+                        שכחתי סיסמה
+                      </button>
+                    </form>
+                  )}
                 </TabsContent>
 
                 {/* Register */}
