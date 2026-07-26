@@ -251,6 +251,59 @@ export function generateWeeklySchedule(
 
   runFillPass(true);   // שלב 5
   runMultiPass(true);  // שלב 6
+  // שלב 11: משבצות שנפתרות רק בהזזת עובד קיים.
+  // כל הפאסים עד כאן רק **מוסיפים** למשבצות ריקות, ולכן משבצת נשארת ריקה
+  // כשכל מי שכשיר לה כבר עובד באותו יום - גם אם עובד מוגבל-עמדות פנוי ויכול
+  // לשחרר אחד מהם. זה מסלול-מרחיב בעומק 1: להזיז עובד קיים מעמדה A לעמדה
+  // הריקה, ולהכניס במקומו ל-A מישהו שפנוי באותו יום. אין כאן max-flow מלא -
+  // שרשראות ארוכות יותר עדיין לא נפתרות - אבל זה מכסה את המקרה שנצפה בפועל.
+  const runChainPass = () => {
+    weekDays.forEach(date => {
+      stations.forEach(station => {
+        while (freeSlot(date, station.id) >= 0) {
+          const emptySlot = freeSlot(date, station.id);
+
+          // המועמד להזזה: עובד שכשיר למשבצת הריקה אך כבר משובץ היום במקום אחר.
+          const movable = employees.filter(emp =>
+            availableStationsFor(emp).includes(station.id) &&
+            employeeAssignments[emp.id][date] > 0 &&
+            !isBlocked(emp, date, false) &&
+            !slotArr(date, station.id).includes(emp.name)
+          );
+
+          let done = false;
+          for (const mover of movable) {
+            // מאיזו עמדה אפשר להזיז אותו - ומי ייכנס במקומו.
+            for (const from of stations) {
+              if (from.id === station.id) continue;
+              const arr = slotArr(date, from.id);
+              const idx = arr.indexOf(mover.name);
+              if (idx < 0 || lockedCells?.has(cellKey(date, from.id, idx))) continue;
+
+              const filler = leastLoaded(employees.filter(emp =>
+                emp.id !== mover.id &&
+                availableStationsFor(emp).includes(from.id) &&
+                !employeeAssignments[emp.id][date] &&
+                !isBlocked(emp, date, false) &&
+                !reachedMax(emp) &&
+                !arr.includes(emp.name)
+              ));
+              if (!filler) continue;
+
+              arr[idx] = filler.name;
+              slotArr(date, station.id)[emptySlot] = mover.name;
+              employeeAssignments[filler.id][date] += 1;
+              done = true;
+              break;
+            }
+            if (done) break;
+          }
+          if (!done) break;
+        }
+      });
+    });
+  };
+
   runFillPass(false);  // שלב 7 - אין ברירה: מותר לשבץ בימי "מעדיף שלא"
   runMultiPass(false); // שלב 8
   runMinimumRepairPass(); // שלב 9
@@ -262,6 +315,7 @@ export function generateWeeklySchedule(
   // בשלבים 7-8, כי בשלב הזה כבר אין ברירה טובה יותר.
   runFillPass(false);
   runMultiPass(false);
+  runChainPass(); // שלב 11 - אחרון: פותר רק מה שנשאר ריק אחרי כל השאר
 
   return schedule;
 }

@@ -304,6 +304,44 @@ describe("פאס-תיקון: מינימום שבועי שלא הושג", () => {
   });
 });
 
+// גם אחרי פאס-התיקון, כל הפאסים עדיין רק **מוסיפים** למשבצות ריקות. משבצת
+// שאפשר למלא רק ע"י הזזת עובד קיים ממקום למקום נשארת ריקה - גם כשאיש לא
+// מפר מינימום ולכן שלב 9 אינו נכנס לפעולה כלל. נצפה בבדיקה מקצה-לקצה 26/7:
+// שיבוץ עם משבצת ריקה אחת שהייתה פתירה בהזזה אחת.
+describe("פאס-שרשור: משבצת שנפתרת רק בהזזת עובד קיים", () => {
+  it("עובד גמיש מוזז לעמדה שרק הוא יכול, והמוגבל נכנס במקומו", () => {
+    const days = getWeekDays(WEEK_START, [0]);
+    const flexible = emp({ id: "a", name: "אבי" });                              // כל העמדות
+    const restricted = emp({ id: "b", name: "גל", availableStations: [1] });     // עמדה 1 בלבד
+    // אבי תופס את עמדה 1 (הראשונה ברשימתו), גל נחסם, ועמדה 2 נשארת ריקה -
+    // למרות שהחלפה אחת פותרת את שתיהן. לשניהם מינימום 0, ולכן שלב 9 לא נכנס.
+    const schedule = generateWeeklySchedule([flexible, restricted], [st(1), st(2)], WEEK_START, [0]);
+    expect(countFilledSlots(schedule)).toBe(2);
+    expect(namesAt(schedule, days[0], 1)).toEqual(["גל"]);
+    expect(namesAt(schedule, days[0], 2)).toEqual(["אבי"]);
+  });
+
+  it("לא מזיז עובד ליום שהוא חסום בו", () => {
+    const days = getWeekDays(WEEK_START, [0]);
+    const flexible = emp({ id: "a", name: "אבי" });
+    const blocked = emp({ id: "b", name: "גל", availableStations: [1], unavailableDays: [days[0]] });
+    const schedule = generateWeeklySchedule([flexible, blocked], [st(1), st(2)], WEEK_START, [0]);
+    // גל חסום, ולכן אין שרשור חוקי - אבי לבדו ממלא משבצת אחת והשנייה נשארת ריקה.
+    expect(countFilledSlots(schedule)).toBe(1);
+    expect(namesAt(schedule, days[0], 1)).not.toContain("גל");
+    expect(namesAt(schedule, days[0], 2)).not.toContain("גל");
+  });
+
+  it("לא חורג ממקסימום שבועי בעת השרשור", () => {
+    const days = getWeekDays(WEEK_START, [0]);
+    const flexible = emp({ id: "a", name: "אבי" });
+    const capped = emp({ id: "b", name: "גל", availableStations: [1], maxWeeklyShifts: 0 });
+    const schedule = generateWeeklySchedule([flexible, capped], [st(1), st(2)], WEEK_START, [0]);
+    expect(calculateWorkloads(schedule)["גל"]).toBeUndefined();
+    expect(countFilledSlots(schedule)).toBe(1);
+  });
+});
+
 describe("week helpers", () => {
   it("toISODateLocal ו-parseISODate הם הפוכים זה של זה", () => {
     const iso = "2026-07-12";
