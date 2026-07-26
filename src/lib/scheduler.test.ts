@@ -245,6 +245,65 @@ describe("calculateRecentLoad", () => {
   });
 });
 
+// הפאסים 1-8 הם greedy עובד-אחר-עובד ונכנסים רק למשבצות ריקות. עובד שזמין
+// במעט עמדות מפסיד אותן לעובדים גמישים שהגיעו קודם ונשאר על 0 - גם כשקיים
+// שיבוץ חוקי שמכבד את כולם. נצפה בבדיקה מקצה-לקצה 26/7: עובדת עם מינימום 1
+// קיבלה 0 משמרות בשבוע שכל 20 משבצותיו התמלאו.
+describe("פאס-תיקון: מינימום שבועי שלא הושג", () => {
+  it("עובד מוגבל-עמדות מקבל את המינימום שלו מעובד גמיש שיש לו עודף", () => {
+    const days = getWeekDays(WEEK_START, [0, 1]);
+    const flexible = emp({ id: "a", name: "אבי" });
+    const restricted = emp({ id: "b", name: "גל", availableStations: [1], minWeeklyShifts: 1 });
+    const schedule = generateWeeklySchedule([flexible, restricted], [st(1)], WEEK_START, [0, 1]);
+    const workloads = calculateWorkloads(schedule);
+    expect(workloads["גל"]).toBeGreaterThanOrEqual(1);
+    expect(workloads["אבי"]).toBeGreaterThanOrEqual(1);
+    // אף משבצת לא אבדה בהחלפה
+    expect(countFilledSlots(schedule)).toBe(days.length);
+  });
+
+  it("לא לוקח ממי שנמצא בדיוק על המינימום שלו - לא פותחים חור כדי לסתום חור", () => {
+    const days = getWeekDays(WEEK_START, [0]);
+    const onMinimum = emp({ id: "a", name: "אבי", minWeeklyShifts: 1 });
+    const starved = emp({ id: "b", name: "גל", availableStations: [1], minWeeklyShifts: 1 });
+    const schedule = generateWeeklySchedule([onMinimum, starved], [st(1)], WEEK_START, [0]);
+    // משבצת אחת, שני עובדים עם מינימום 1 - אי אפשר לספק את שניהם.
+    // הדרישה: המשבצת נשארת מאוישת ואיש לא מודח לטובת השני.
+    expect(namesAt(schedule, days[0], 1)).toEqual(["אבי"]);
+  });
+
+  it("התורם נקלט מחדש - ההחלפה לא מותירה משבצת ריקה שהוא יכול למלא", () => {
+    const days = getWeekDays(WEEK_START, [0]);
+    const flexible = emp({ id: "a", name: "אבי" });
+    const restricted = emp({ id: "b", name: "גל", availableStations: [1], minWeeklyShifts: 1 });
+    const schedule = generateWeeklySchedule([flexible, restricted], [st(1), st(2)], WEEK_START, [0]);
+    expect(namesAt(schedule, days[0], 1)).toEqual(["גל"]);
+    expect(namesAt(schedule, days[0], 2)).toEqual(["אבי"]);
+    expect(countFilledSlots(schedule)).toBe(2);
+  });
+
+  it("פאס-התיקון לא מפר יום 'לא זמין'", () => {
+    const days = getWeekDays(WEEK_START, [0, 1]);
+    const flexible = emp({ id: "a", name: "אבי" });
+    const restricted = emp({
+      id: "b", name: "גל", availableStations: [1], minWeeklyShifts: 2,
+      unavailableDays: [days[0]],
+    });
+    const schedule = generateWeeklySchedule([flexible, restricted], [st(1)], WEEK_START, [0, 1]);
+    expect(namesAt(schedule, days[0], 1)).not.toContain("גל");
+  });
+
+  it("פאס-התיקון לא חורג מהמקסימום השבועי של המקבל", () => {
+    const flexible = emp({ id: "a", name: "אבי" });
+    const capped = emp({
+      id: "b", name: "גל", availableStations: [1],
+      minWeeklyShifts: 4, maxWeeklyShifts: 1,
+    });
+    const schedule = generateWeeklySchedule([flexible, capped], [st(1)], WEEK_START, DEFAULT_ACTIVE_DAYS);
+    expect(calculateWorkloads(schedule)["גל"]).toBe(1);
+  });
+});
+
 describe("week helpers", () => {
   it("toISODateLocal ו-parseISODate הם הפוכים זה של זה", () => {
     const iso = "2026-07-12";

@@ -199,10 +199,69 @@ export function generateWeeklySchedule(
     });
   };
 
+  // שלב 9: פאס-תיקון למינימומים שלא הושגו.
+  // כל הפאסים עד כאן הם greedy עובד-אחר-עובד ונכנסים אך ורק למשבצות ריקות.
+  // עובד שזמין במעט עמדות מפסיד אותן לעובדים גמישים שהגיעו קודם בתור, ונשאר
+  // מתחת למינימום שלו גם כשקיים שיבוץ חוקי שמכבד את כולם. זה הפאס היחיד
+  // שרשאי להוציא עובד ממשבצת - ורק כשיש לו עודף מעל המינימום שלו עצמו,
+  // כדי לא לסתום חור אחד בפתיחת חור אחר.
+  const runMinimumRepairPass = () => {
+    const slack = (empId: string, min: number) => getAssignedCount(empId) - min;
+
+    employees
+      .filter(e => getAssignedCount(e.id) < e.minWeeklyShifts)
+      // המוגבל ביותר קודם: לו יש הכי מעט חלופות, והוא זה שנרעב מלכתחילה.
+      .sort((a, b) => availableStationsFor(a).length - availableStationsFor(b).length)
+      .forEach(employee => {
+        for (const date of weekDays) {
+          if (getAssignedCount(employee.id) >= employee.minWeeklyShifts) break;
+          if (reachedMax(employee)) break;
+          // תיקון-מינימום גובר על "מעדיף שלא", אך לעולם לא על "לא זמין".
+          if (isBlocked(employee, date, false)) continue;
+          if (employeeAssignments[employee.id][date]) continue;
+
+          const stationIds = availableStationsFor(employee);
+
+          // משבצת ריקה קודמת להחלפה - היא מספקת את המינימום בלי לקחת מאיש.
+          if (stationIds.some(stationId => place(date, stationId, employee))) continue;
+
+          // אחרת: להוציא את בעל-העודף הגדול ביותר, כדי לפגוע במי שהכי פחות זקוק.
+          let donorStation = -1, donorSlot = -1, donorEmp: Employee | undefined;
+          stationIds.forEach(stationId => {
+            const arr = slotArr(date, stationId);
+            arr.forEach((name, i) => {
+              if (!name || lockedCells?.has(cellKey(date, stationId, i))) return;
+              const donor = employees.find(e => e.name === name);
+              if (!donor || donor.id === employee.id) return;
+              if (slack(donor.id, donor.minWeeklyShifts) <= 0) return;
+              if (donorEmp && slack(donor.id, donor.minWeeklyShifts)
+                            <= slack(donorEmp.id, donorEmp.minWeeklyShifts)) return;
+              donorEmp = donor; donorStation = stationId; donorSlot = i;
+            });
+          });
+
+          if (donorEmp) {
+            slotArr(date, donorStation)[donorSlot] = employee.name;
+            employeeAssignments[donorEmp.id][date] -= 1;
+            employeeAssignments[employee.id][date] += 1;
+          }
+        }
+      });
+  };
+
   runFillPass(true);   // שלב 5
   runMultiPass(true);  // שלב 6
   runFillPass(false);  // שלב 7 - אין ברירה: מותר לשבץ בימי "מעדיף שלא"
   runMultiPass(false); // שלב 8
+  runMinimumRepairPass(); // שלב 9
+
+  // שלב 10: התורם שהוצא בשלב 9 התפנה - להחזירו למשבצת ריקה אם יש כזו.
+  // בלי זה ההחלפה מתקנת מינימום אחד ומשאירה משבצת ריקה שהתורם יכול לאייש,
+  // כלומר סוגרת פגם אחד ופותחת אחר. runFillPass מדלג על מכוכבים ולכן
+  // runMultiPass הוא זה שמחזיר אותם - שניהם ללא כיבוד "מעדיף שלא", כמו
+  // בשלבים 7-8, כי בשלב הזה כבר אין ברירה טובה יותר.
+  runFillPass(false);
+  runMultiPass(false);
 
   return schedule;
 }

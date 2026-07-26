@@ -15,6 +15,7 @@ import { getWeekDays, getHebrewDayLabels, cellNames, stationSlots, cellKey, pars
 import { useWeekHolidays } from "@/hooks/use-week-holidays";
 import { getEmployeeColor } from "@/lib/employeeColors";
 import { absenceKey } from "@/lib/absence";
+import { cellAssignmentWarnings, cellWarningLabel } from "@/lib/cellEligibility";
 
 interface ScheduleTableProps {
   schedule: WeeklySchedule;
@@ -300,21 +301,35 @@ export function ScheduleTable({
             >
               רוקן תא
             </Button>
-            {employees.map(emp => (
-              <Button
-                key={emp.id}
-                variant="ghost"
-                className="w-full justify-start"
-                onClick={() => handleSelectEmployee(emp.name)}
-              >
-                {emp.hasStar && "⭐ "}{emp.name}
-                {emp.notes && (
-                  <span className="mr-auto text-xs text-muted-foreground truncate max-w-[140px]">
-                    {emp.notes}
+            {employees.map(emp => {
+              // עדיין ניתן לבחירה - המנהל רשאי לדרוס. מה שהיה חסר זה החיווי.
+              const warnings = editCell
+                ? cellAssignmentWarnings(emp, editCell.date, editCell.stationId, editCell.slotIndex, schedule)
+                : [];
+              const warning = warnings[0];
+              return (
+                <Button
+                  key={emp.id}
+                  variant="ghost"
+                  className="w-full justify-start"
+                  onClick={() => handleSelectEmployee(emp.name)}
+                >
+                  <span className={warning ? "text-muted-foreground" : undefined}>
+                    {emp.hasStar && "⭐ "}{emp.name}
                   </span>
-                )}
-              </Button>
-            ))}
+                  {warning && (
+                    <span className="mr-auto text-[11px] font-medium text-amber-600 dark:text-amber-500 whitespace-nowrap">
+                      ⚠ {cellWarningLabel(warning)}
+                    </span>
+                  )}
+                  {!warning && emp.notes && (
+                    <span className="mr-auto text-xs text-muted-foreground truncate max-w-[140px]">
+                      {emp.notes}
+                    </span>
+                  )}
+                </Button>
+              );
+            })}
           </div>
         </DialogContent>
       </Dialog>
