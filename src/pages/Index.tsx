@@ -683,7 +683,9 @@ const Index = () => {
       id: Date.now().toString(),
       name: scheduleName.trim(),
       schedule,
-      weekStart: weekStart.toISOString(),
+      // יום מקומי בלבד (YYYY-MM-DD) - כל הקוראים של weekStart מפרקים אותו
+      // כמפתח-תאריך. חותמת-זמן מלאה כאן מוטטה בעבר את כל השבועות למפתח אחד.
+      weekStart: toISODateLocal(weekStart),
       savedAt: new Date().toISOString(),
     };
     setSavedSchedules(prev => [...prev, entry]);
@@ -694,7 +696,7 @@ const Index = () => {
 
   const handleLoadSchedule = (saved: SavedSchedule) => {
     setSchedule(saved.schedule);
-    setWeekStart(new Date(saved.weekStart));
+    setWeekStart(parseISODate(saved.weekStart));
     toast({ title: `"${saved.name}" נטען` });
   };
 
@@ -1522,7 +1524,7 @@ const Index = () => {
                         <div className="flex-1">
                           <p className="font-medium">{saved.name}</p>
                           <p className="text-sm text-muted-foreground">
-                            {new Date(saved.savedAt).toLocaleDateString("he-IL")} · שבוע {new Date(saved.weekStart).toLocaleDateString("he-IL")}
+                            {new Date(saved.savedAt).toLocaleDateString("he-IL")} · שבוע {parseISODate(saved.weekStart).toLocaleDateString("he-IL")}
                           </p>
                         </div>
                         <div className="flex gap-2">

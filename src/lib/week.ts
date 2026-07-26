@@ -25,7 +25,15 @@ export function toISODateLocal(d: Date): string {
 // Parse a YYYY-MM-DD key as local midnight. new Date("YYYY-MM-DD") parses as
 // UTC midnight, so displaying it in a negative-UTC timezone shows the
 // previous day - always parse date-only keys with this before display.
+//
+// Tolerates a full ISO timestamp too: saved schedules written before the
+// weekStart format was fixed carry one, and splitting those on "-" yields
+// Number("26T08:36:37.179Z") = NaN, i.e. an Invalid Date. Such a timestamp
+// already encodes an absolute instant, so new Date() reconstructs the correct
+// local day - do NOT slice off the first 10 chars, that is the UTC day and
+// lands on the wrong week for anyone saving near midnight.
 export function parseISODate(iso: string): Date {
+  if (iso.length > 10) return new Date(iso);
   const [y, m, d] = iso.split("-").map(Number);
   return new Date(y, m - 1, d);
 }

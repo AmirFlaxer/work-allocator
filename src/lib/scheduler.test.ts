@@ -277,3 +277,31 @@ describe("week helpers", () => {
     expect(latestSchedulePerWeek(saved)).toHaveLength(2);
   });
 });
+
+// שיבוצים שנשמרו לפני התיקון נושאים weekStart בפורמט חותמת-זמן מלאה
+// (toISOString), ולא YYYY-MM-DD. בלי סובלנות לפורמט הזה כל הקוראים מקבלים
+// Invalid Date, כל השבועות מתמוטטים למפתח אחד, והדוח החודשי מציג שבוע יחיד.
+describe("תאימות-לאחור ל-weekStart בפורמט חותמת-זמן", () => {
+  it("parseISODate מקבל חותמת-זמן מלאה ומחזיר את היום המקומי", () => {
+    expect(toISODateLocal(parseISODate("2026-07-26T08:36:37.179Z"))).toBe("2026-07-26");
+  });
+
+  it("parseISODate ממשיך לקבל YYYY-MM-DD", () => {
+    expect(toISODateLocal(parseISODate("2026-07-26"))).toBe("2026-07-26");
+  });
+
+  it("latestSchedulePerWeek לא ממוטט שבועות שונים שנשמרו כחותמת-זמן", () => {
+    const saved: SavedSchedule[] = [
+      { id: "1", name: "שבוע 30", schedule: {}, weekStart: "2026-07-19T08:36:37.179Z", savedAt: "2026-07-19T08:00:00.000Z" },
+      { id: "2", name: "שבוע 31", schedule: {}, weekStart: "2026-07-26T08:36:37.179Z", savedAt: "2026-07-26T08:00:00.000Z" },
+    ];
+    expect(latestSchedulePerWeek(saved)).toHaveLength(2);
+  });
+
+  it("calculateRecentLoad סופר שבועות-קודמים שנשמרו כחותמת-זמן", () => {
+    const saved: SavedSchedule[] = [
+      { id: "1", name: "שבוע קודם", schedule: { "2026-07-05": { 1: ["אבי"] } }, weekStart: "2026-07-05T21:00:00.000Z", savedAt: "2026-07-06T08:00:00.000Z" },
+    ];
+    expect(calculateRecentLoad(saved, WEEK_START).get("אבי")).toBe(1);
+  });
+});
