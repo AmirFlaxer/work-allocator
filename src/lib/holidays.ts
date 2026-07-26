@@ -1,38 +1,35 @@
-import { parseISODate } from "@/lib/week";
+import holidayData from "@/data/israeli-holidays.json";
+
+// ── מקור הנתונים ────────────────────────────────────────────────────────────
+// טבלה סטטית שנוצרת ע"י scripts/generate-holidays.mjs מ-date-holidays
+// (ISC AND CC-BY-3.0). קודם לכן ישבה כאן @hebcal/core, שהיא GPL-2.0 בלי
+// חריג-קישור ונשלחה לדפדפן של כל משתמש כ-chunk של 164KB. הטבלה שוקלת 7KB
+// אחרי gzip, אין בה ספרייה כלל, והיא נטענת סינכרונית - בלי import דינמי
+// ובלי קריאת-רשת.
+//
+// הכיסוי אינו אינסופי; holidays.test.ts נכשלת כשהוא מתקרב לסופו.
+// ──────────────────────────────────────────────────────────────────────────────
 
 export type HolidayCategory = "strong" | "light";
 export interface HolidayInfo { name: string; category: HolidayCategory; }
 
-interface CategorizableEvent {
-  getFlags(): number;
-  basename(): string;
+interface HolidayData {
+  firstYear: number;
+  lastYear: number;
+  days: Record<string, [string, HolidayCategory]>;
 }
 
-// ערכי הביטים מתוך @hebcal/core (מתועדים, לא מספרי-קסם):
-// CHAG=0x1 (יום-טוב, ללא עבודה) · MODERN_HOLIDAY=0x2000 (יום-העצמאות/הזיכרון/השואה/ירושלים)
-// MAJOR_FAST=0x4000 (יום-כיפור - כבר מכוסה ע"י CHAG - ותשעה-באב) · MINOR_HOLIDAY=0x80000
-// EREV=0x100000 (ערב-חג) · CHOL_HAMOED=0x200000 · MINOR_FAST=0x100
-const CHAG = 0x1;
-const MODERN_HOLIDAY = 0x2000;
-const LIGHT_MASK = 0x80000 /* MINOR_HOLIDAY */ | 0x100000 /* EREV */ | 0x200000 /* CHOL_HAMOED */
-  | 0x4000 /* MAJOR_FAST */ | 0x100 /* MINOR_FAST */ | MODERN_HOLIDAY;
+const data = holidayData as unknown as HolidayData;
 
-// יום-העצמאות אינו מסומן CHAG ב-hebcal (הוא MODERN_HOLIDAY, כמו יום-הזיכרון/השואה/ירושלים
-// שהם ימי-עבודה רגילים) - זה מקרה-פרטי-ידני, כי בפועל הוא יום-חופש לאומי.
-export function categorizeHolidayEvent(ev: CategorizableEvent): HolidayCategory | null {
-  const f = ev.getFlags();
-  if ((f & CHAG) !== 0 || ev.basename() === "Yom HaAtzma'ut") return "strong";
-  if ((f & LIGHT_MASK) !== 0) return "light";
-  return null;
-}
+export const holidayCoverage = { firstYear: data.firstYear, lastYear: data.lastYear };
 
-export async function getHolidayForDate(dateISO: string): Promise<HolidayInfo | null> {
-  const { HebrewCalendar } = await import("@hebcal/core");
-  const events = HebrewCalendar.getHolidaysOnDate(parseISODate(dateISO), true) ?? [];
-  const categorized = events
-    .map(ev => ({ ev, category: categorizeHolidayEvent(ev) }))
-    .filter((x): x is { ev: (typeof events)[number]; category: HolidayCategory } => x.category !== null);
-  if (categorized.length === 0) return null;
-  const chosen = categorized.find(x => x.category === "strong") ?? categorized[0];
-  return { name: chosen.ev.render("he"), category: chosen.category };
+/**
+ * strong = יום שבו לא עובדים (חג מלא). light = יום-ציון או ערב-חג שכדאי
+ * לראות בלוח אבל עובדים בו. null = יום רגיל, או תאריך מחוץ לטווח הטבלה.
+ */
+export function getHolidayForDate(dateISO: string): HolidayInfo | null {
+  const entry = data.days[dateISO];
+  if (!entry) return null;
+  const [name, category] = entry;
+  return { name, category };
 }

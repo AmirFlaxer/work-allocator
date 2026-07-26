@@ -68,8 +68,13 @@ export function AboutDialog() {
             </ul>
           </section>
 
+          {/* ייחוס נדרש: נתוני החגים מבוססים על date-holidays, שהדאטה שבו
+              מורשה CC-BY-3.0 - הרישיון מחייב מתן קרדיט. */}
           <p className="border-t border-border pt-3 text-xs text-muted-foreground">
-            גרסה {__APP_VERSION__}
+            גרסה {__APP_VERSION__} · נתוני החגים מבוססים על{" "}
+            <a href="https://github.com/commenthol/date-holidays" target="_blank" rel="noopener noreferrer"
+              className="underline hover:text-foreground transition-colors">date-holidays</a>{" "}
+            (CC BY 3.0)
           </p>
         </div>
       </DialogContent>
