@@ -9,6 +9,14 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, Building2, Mail, Lock, User, CheckCircle2, XCircle } from "lucide-react";
 
 import { PASSWORD_RULES, isPasswordValid } from "@/lib/password";
+import { isPasswordPwned, pwnedMessage } from "@/lib/pwned";
+
+// בדיקת דליפה משותפת לשני המסכים שקובעים סיסמה. מחזירה הודעת-שגיאה או null.
+// כשל-פתוח: אם השירות אינו זמין הפונקציה מחזירה null וההרשמה ממשיכה.
+async function pwnedError(password: string): Promise<string | null> {
+  const result = await isPasswordPwned(password);
+  return result?.pwned ? pwnedMessage(result.count) : null;
+}
 
 // מסך קביעת-סיסמה אחרי לחיצה על קישור-השחזור מהמייל. הקישור יוצר session תקף,
 // ולכן AuthContext מסמן recoveryMode כדי שהמסך הזה יקדים את האפליקציה עצמה -
@@ -23,6 +31,12 @@ export function SetNewPasswordPage() {
     e.preventDefault();
     if (!isPasswordValid(password)) return;
     setLoading(true);
+    const leaked = await pwnedError(password);
+    if (leaked) {
+      toast({ title: "סיסמה דלופה", description: leaked, variant: "destructive" });
+      setLoading(false);
+      return;
+    }
     const { error } = await updatePassword(password);
     if (error) toast({ title: "שגיאה", description: error, variant: "destructive" });
     else toast({ title: "הסיסמה עודכנה", description: "אפשר להמשיך לעבוד" });
@@ -178,6 +192,12 @@ export function LoginPage() {
     e.preventDefault();
     if (!isPasswordValid(regPassword)) return;
     setLoading(true);
+    const leaked = await pwnedError(regPassword);
+    if (leaked) {
+      toast({ title: "סיסמה דלופה", description: leaked, variant: "destructive" });
+      setLoading(false);
+      return;
+    }
     const { error } = await signUp(regEmail, regPassword, orgName, fullName);
     if (error) {
       toast({ title: "שגיאת הרשמה", description: error, variant: "destructive" });

@@ -4,6 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { InviteContext, classifyInvite } from "@/lib/team";
 import { PASSWORD_RULES, isPasswordValid } from "@/lib/password";
+import { isPasswordPwned, pwnedMessage } from "@/lib/pwned";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -112,6 +113,15 @@ export function JoinPage() {
     if (!token) return;
     if (!isExistingUser && !isPasswordValid(password)) return;
     setSubmitting(true);
+    // רק במסלול שקובע סיסמה חדשה; מנהל שכבר מחובר רק מממש הזמנה.
+    if (!isExistingUser) {
+      const leaked = await isPasswordPwned(password);
+      if (leaked?.pwned) {
+        toast({ title: "סיסמה דלופה", description: pwnedMessage(leaked.count), variant: "destructive" });
+        setSubmitting(false);
+        return;
+      }
+    }
     const { error } = isExistingUser
       ? await acceptInvite(token, fullName)
       : await signUpAndJoin(email, password, fullName, token);
