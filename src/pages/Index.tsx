@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } from "react";
 import { Employee, Station, WeeklySchedule, SavedSchedule, AuditEntry, ScheduleTemplate } from "@/types/employee";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,7 +15,12 @@ import { WeeklyPreferences } from "@/components/WeeklyPreferences";
 import { ScheduleTable } from "@/components/ScheduleTable";
 import { EmployeeScheduleView } from "@/components/EmployeeScheduleView";
 import { ScheduleChanges } from "@/components/ScheduleChanges";
-import { MonthlyReport } from "@/components/MonthlyReport";
+// recharts שוקל 364KB (‏101KB אחרי gzip) ונחוץ אך ורק בלשונית הדוחות. ייבוא
+// סטטי הכניס אותו לטעינה הראשונית של כל משתמש, כולל מי שלא פותח דוחות לעולם.
+// פיצול ל-chunk נפרד לבדו לא עזר - הוא עדיין נטען מ-index.html; רק הטעינה
+// העצלה כאן דוחה אותו בפועל עד שנכנסים ללשונית.
+const MonthlyReport = lazy(() =>
+  import("@/components/MonthlyReport").then(m => ({ default: m.MonthlyReport })));
 import { ContactDeveloper } from "@/components/ContactDeveloper";
 import { AboutDialog } from "@/components/AboutDialog";
 import { HelpDialog, GuidesBanner } from "@/components/HelpGuides";
@@ -1571,7 +1576,13 @@ const Index = () => {
               <h2 className="text-xl font-extrabold">דוחות לחשבות</h2>
             </div>
             {canUseMonthlyReports(plan) ? (
-              <MonthlyReport savedSchedules={savedSchedules} stations={stations} absences={absences} employees={employees} />
+              <Suspense fallback={
+                <div className="flex items-center justify-center py-16 text-muted-foreground">
+                  <Loader2 className="h-5 w-5 animate-spin ml-2" /> טוען דוחות...
+                </div>
+              }>
+                <MonthlyReport savedSchedules={savedSchedules} stations={stations} absences={absences} employees={employees} />
+              </Suspense>
             ) : (
               <div className="text-center py-16 bg-primary/5 border-2 border-dashed border-border rounded-2xl">
                 <p className="text-lg font-semibold mb-1">דוחות חודשיים - תוכנית Pro</p>
