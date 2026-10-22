@@ -2,7 +2,65 @@ import { describe, it, expect } from "vitest";
 import {
   signUpErrorMessage, isAlreadyRegistered, isDuplicateProfile,
   resetRequestErrorMessage, updatePasswordErrorMessage,
+  signInErrorMessage, isServerUnreachable,
 } from "@/lib/authErrors";
+
+// כך supabase-js מחזיר כשל-רשת: DNS שלא נפתר (פרויקט מושהה), אין אינטרנט,
+// או 502-504 בדקות שהשרת עולה. כולם AuthRetryableFetchError.
+const fetchFailed = { name: "AuthRetryableFetchError", message: "Failed to fetch", status: 0 };
+const badGateway  = { name: "AuthRetryableFetchError", message: "Bad Gateway", status: 502 };
+
+describe("isServerUnreachable", () => {
+  it("כשל-רשת ו-502 בזמן עלייה", () => {
+    expect(isServerUnreachable(fetchFailed)).toBe(true);
+    expect(isServerUnreachable(badGateway)).toBe(true);
+  });
+
+  it("זיהוי לפי status גם בלי שם-המחלקה", () => {
+    expect(isServerUnreachable({ status: 0 })).toBe(true);
+    expect(isServerUnreachable({ status: 503 })).toBe(true);
+  });
+
+  it("שגיאה עסקית מהשרת אינה 'לא עונה'", () => {
+    expect(isServerUnreachable({ code: "invalid_credentials", status: 400 })).toBe(false);
+    expect(isServerUnreachable(null)).toBe(false);
+  });
+});
+
+describe("signInErrorMessage", () => {
+  // התקרית של 22/10/2026: הפרויקט הושהה, וכל ניסיון כניסה הציג "סיסמה שגויה" -
+  // המשתמש ניסה סיסמאות ושחזור במקום לדעת שהשרת פשוט לא עונה.
+  it("שרת לא עונה - לא מאשים את הסיסמה", () => {
+    for (const e of [fetchFailed, badGateway]) {
+      const msg = signInErrorMessage(e);
+      expect(msg).toContain("אין חיבור לשרת");
+      expect(msg).not.toContain("סיסמה");
+    }
+  });
+
+  it("פרטים שגויים", () => {
+    expect(signInErrorMessage({ code: "invalid_credentials", status: 400, message: "Invalid login credentials" }))
+      .toBe("מייל או סיסמה שגויים");
+  });
+
+  it("חסימת-קצב מוסברת עם פעולה", () => {
+    expect(signInErrorMessage({ code: "over_request_rate_limit", status: 429 })).toContain("המתינו");
+  });
+
+  it("שגיאה לא מוכרת - הודעה גנרית ולא ניחוש על הסיסמה", () => {
+    const msg = signInErrorMessage({ code: "unexpected_failure", status: 500 });
+    expect(msg).not.toContain("שגויים");
+    expect(msg.length).toBeGreaterThan(0);
+  });
+});
+
+describe("שרת לא עונה - בכל מסלולי-האימות", () => {
+  it("הרשמה, בקשת-שחזור וקביעת-סיסמה", () => {
+    expect(signUpErrorMessage(fetchFailed)).toContain("אין חיבור לשרת");
+    expect(resetRequestErrorMessage(fetchFailed)).toContain("אין חיבור לשרת");
+    expect(updatePasswordErrorMessage(badGateway)).toContain("אין חיבור לשרת");
+  });
+});
 
 describe("signUpErrorMessage", () => {
   it("מייל כבר רשום - מפנה להתחברות ולא לבדיקת פורמט", () => {

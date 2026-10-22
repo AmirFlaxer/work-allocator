@@ -4,7 +4,7 @@ import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { inviteErrorMessage } from "@/lib/team";
 import {
   signUpErrorMessage, isAlreadyRegistered, isDuplicateProfile,
-  resetRequestErrorMessage, updatePasswordErrorMessage,
+  resetRequestErrorMessage, updatePasswordErrorMessage, signInErrorMessage,
 } from "@/lib/authErrors";
 
 export interface Profile {
@@ -157,7 +157,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signIn = async (email: string, password: string) => {
     if (!supabase) return { error: "Supabase לא מוגדר" };
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-    return { error: error ? "מייל או סיסמה שגויים" : null };
+    return { error: error ? signInErrorMessage(error) : null };
   };
 
   const signUp = async (email: string, password: string, orgName: string, fullName: string) => {

@@ -3,9 +3,32 @@
 // מ-6 תווים") - גם מטעה (ה-UI דורש 8) וגם חסרת-פעולה: מנהל שכבר נרשם קיבל
 // הנחיה לבדוק פורמט במקום פשוט להתחבר.
 
-interface SupabaseError { message?: string; code?: string }
+interface SupabaseError { message?: string; code?: string; name?: string; status?: number }
+
+// שרת שלא עונה: DNS שלא נפתר (פרויקט Free מושהה), אין אינטרנט, או 502-504
+// בדקות שהשרת עולה. supabase-js מחזיר את כולם כ-AuthRetryableFetchError עם
+// status 0 או 5xx. בלי הזיהוי הזה, ב-22/10/2026 כל ניסיון כניסה הציג "סיסמה
+// שגויה" כשהפרויקט היה מושהה.
+export function isServerUnreachable(error: SupabaseError | null | undefined): boolean {
+  if (!error) return false;
+  if (error.name === "AuthRetryableFetchError") return true;
+  return error.status === 0 || error.status === 502 || error.status === 503 || error.status === 504;
+}
+
+const SERVER_UNREACHABLE = "אין חיבור לשרת - בדקו את החיבור לאינטרנט ונסו שוב בעוד כמה דקות. אם זה חוזר, פנו למפתח";
+
+export function signInErrorMessage(error: SupabaseError | null | undefined): string {
+  if (isServerUnreachable(error)) return SERVER_UNREACHABLE;
+  const code = error?.code ?? "";
+  if (code === "invalid_credentials" || error?.status === 400) return "מייל או סיסמה שגויים";
+  if (code === "over_request_rate_limit" || error?.status === 429) {
+    return "יותר מדי נסיונות - המתינו דקה ונסו שוב";
+  }
+  return "הכניסה נכשלה - נסו שוב, ואם זה חוזר פנו למפתח";
+}
 
 export function signUpErrorMessage(error: SupabaseError | null | undefined): string {
+  if (isServerUnreachable(error)) return SERVER_UNREACHABLE;
   const code = error?.code ?? "";
   const message = (error?.message ?? "").toLowerCase();
 
@@ -40,6 +63,7 @@ export function isDuplicateProfile(error: SupabaseError | null | undefined): boo
 // בקשת-שחזור: אין להסגיר אם הכתובת רשומה. השגיאה היחידה ששווה להציג היא
 // חסימת-קצב, כי היא מסבירה למה כלום לא קרה ומה לעשות (להמתין).
 export function resetRequestErrorMessage(error: SupabaseError | null | undefined): string {
+  if (isServerUnreachable(error)) return SERVER_UNREACHABLE;
   const code = error?.code ?? "";
   const message = (error?.message ?? "").toLowerCase();
   if (code === "over_email_send_rate_limit" || message.includes("rate limit")) {
@@ -51,6 +75,7 @@ export function resetRequestErrorMessage(error: SupabaseError | null | undefined
 // קביעת סיסמה חדשה. "same_password" הוא המקרה השכיח: מי ששכח סיסמה מנחש את
 // הישנה ומקבל שגיאה שבלי תרגום נראית כתקלה במערכת.
 export function updatePasswordErrorMessage(error: SupabaseError | null | undefined): string {
+  if (isServerUnreachable(error)) return SERVER_UNREACHABLE;
   const code = error?.code ?? "";
   const message = (error?.message ?? "").toLowerCase();
   if (code === "same_password" || message.includes("should be different")) {
